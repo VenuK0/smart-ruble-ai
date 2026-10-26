@@ -1,0 +1,109 @@
+{
+  "classifier_known": {
+    "regime": "known",
+    "n_train": 1050,
+    "n_test": 450,
+    "accuracy": 1.0,
+    "other_as_target_rate": 0.0,
+    "sweep": [
+      {
+        "threshold": 0.0,
+        "auto_share": 1.0,
+        "auto_accuracy": 1.0,
+        "false_approve_rate": 0.0
+      },
+      {
+        "threshold": 0.4,
+        "auto_share": 1.0,
+        "auto_accuracy": 1.0,
+        "false_approve_rate": 0.0
+      },
+      {
+        "threshold": 0.5,
+        "auto_share": 1.0,
+        "auto_accuracy": 1.0,
+        "false_approve_rate": 0.0
+      },
+      {
+        "threshold": 0.6,
+        "auto_share": 0.9955555555555555,
+        "auto_accuracy": 1.0,
+        "false_approve_rate": 0.0
+      },
+      {
+        "threshold": 0.7,
+        "auto_share": 0.9911111111111112,
+        "auto_accuracy": 1.0,
+        "false_approve_rate": 0.0
+      },
+      {
+        "threshold": 0.8,
+        "auto_share": 0.9777777777777777,
+        "auto_accuracy": 1.0,
+        "false_approve_rate": 0.0
+      },
+      {
+        "threshold": 0.9,
+        "auto_share": 0.8822222222222222,
+        "auto_accuracy": 1.0,
+        "false_approve_rate": 0.0
+      }
+    ]
+  },
+  "classifier_unseen": {
+    "regime": "unseen",
+    "n_train": 1090,
+    "n_test": 410,
+    "accuracy": 0.44878048780487806,
+    "other_as_target_rate": 0.6136363636363636,
+    "sweep": [
+      {
+        "threshold": 0.0,
+        "auto_share": 1.0,
+        "auto_accuracy": 0.44878048780487806,
+        "false_approve_rate": 0.6136363636363636
+      },
+      {
+        "threshold": 0.4,
+        "auto_share": 0.7292682926829268,
+        "auto_accuracy": 0.5250836120401338,
+        "false_approve_rate": 0.36363636363636365
+      },
+      {
+        "threshold": 0.5,
+        "auto_share": 0.551219512195122,
+        "auto_accuracy": 0.5265486725663717,
+        "false_approve_rate": 0.25
+      },
+      {
+        "threshold": 0.6,
+        "auto_share": 0.375609756097561,
+        "auto_accuracy": 0.42207792207792205,
+        "false_approve_rate": 0.1590909090909091
+      },
+      {
+        "threshold": 0.7,
+        "auto_share": 0.24390243902439024,
+        "auto_accuracy": 0.46,
+        "false_approve_rate": 0.11363636363636363
+      },
+      {
+        "threshold": 0.8,
+        "auto_share": 0.18048780487804877,
+        "auto_accuracy": 0.5,
+        "false_approve_rate": 0.03409090909090909
+      },
+      {
+        "threshold": 0.9,
+        "auto_share": 0.05609756097560976,
+        "auto_accuracy": 1.0,
+        "false_approve_rate": 0.0
+      }
+    ]
+  },
+  "antifraud": {
+    "runs": 20,
+    "precision_at_k": 1.0,
+    "recall_at_k_plus2": 1.0
+  }
+}

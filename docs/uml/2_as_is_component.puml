@@ -1,0 +1,37 @@
+@startuml
+!theme plain
+left to right direction
+skinparam componentStyle uml2
+skinparam packageBackgroundColor #F8FAFC
+skinparam packageBorderColor #94A3B8
+skinparam componentBackgroundColor #FFFFFF
+skinparam componentBorderColor #1E3A8A
+title AS IS: компоненты и потоки данных
+
+package "1. Пользователь" {
+  [Карта / счёт\n(безналичный рубль)] as Card
+  [Бумажный чек /\nExcel-отчёт] as Doc
+}
+package "2. Продавец" {
+  [Касса / POS-терминал] as POS
+}
+package "3. Контур вуза" {
+  [АРМ бухгалтера\n(ручной ввод)] as ARM
+  [Учётная система (1С)] as ERP
+}
+package "4. Банк-эквайер" {
+  [Процессинг банка] as Bank
+}
+
+Card --> POS : Оплата без проверки цели
+POS --> Bank : Авторизация платежа
+POS ..> Doc : Печать чека
+Doc ==> ARM : <b>РУЧНОЙ ВВОД</b>
+ARM --> ERP : Проводка постфактум
+
+note bottom of ARM #FEE2E2
+  <b>Разрыв данных:</b>
+  платёжная система не видит состав покупки,
+  а вуз видит чек только при сверке.
+end note
+@enduml

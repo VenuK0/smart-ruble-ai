@@ -1,0 +1,29 @@
+@startuml
+!theme plain
+skinparam ActivityBackgroundColor #FFFFFF
+skinparam ActivityBorderColor #1E3A8A
+skinparam ArrowColor #1E3A8A
+skinparam ArrowFontSize 10
+title AS IS: ручная проверка после траты
+
+|#F1F5F9|Грантополучатель|
+start
+:Покупка, получение чека;
+:Сбор чеков и документов;
+:Сведение отчёта (Excel);
+
+|#FEF3C7|Бухгалтерия вуза|
+:Приём чеков и сметы;
+:Ручная построчная сверка со сметой;
+
+if (Все позиции соответствуют смете?) then (Да)
+  :Закрытие отчёта, проводки в учёте;
+  stop
+else (Нет)
+  -[bold,#DC2626]->
+  :**НЕЦЕЛЕВОЙ РАСХОД**
+  Деньги уже у продавца.
+  Претензии, возврат средств;
+  kill
+endif
+@enduml

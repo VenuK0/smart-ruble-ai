@@ -1,0 +1,51 @@
+@startuml
+!theme plain
+left to right direction
+skinparam componentStyle uml2
+skinparam packageBackgroundColor #F8FAFC
+skinparam packageBorderColor #94A3B8
+skinparam componentBackgroundColor #FFFFFF
+skinparam componentBorderColor #1E3A8A
+title TO BE: архитектура SmartRubleAI
+
+package "1. Клиент" {
+  [Личный кабинет] as App
+  [Кошелёк цифрового рубля] as Wallet
+}
+package "2. Торговая точка" {
+  [Касса / POS-терминал] as POS
+  [ОФД\n(чек приходит после платежа)] as OFD
+}
+package "3. SmartRubleAI" #E0F2FE {
+  [API-шлюз (FastAPI)] as Gateway
+  [Разбор сметы\n(языковая модель → параметры)] as Parser
+  [Классификатор позиций\n(порог уверенности)] as Clf
+  [Антифрод\n(граф + аномалии)] as Fraud
+  [Журнал аудита\n(цепочка хэшей)] as Log
+}
+package "4. Платформа цифрового рубля (Банк России)" #DCFCE7 {
+  [Шаблон контракта\n(лимиты по статьям)] as Contract
+}
+package "5. Вуз" {
+  [Служба финконтроля] as Control
+  [Учётная система (1С)] as ERP
+}
+
+App --> Gateway : 1. Загрузка сметы
+Gateway --> Parser : 2. Разбор сметы
+Gateway --> Contract : 3. Создание контракта из шаблона
+Wallet --> POS : 4. Оплата цифровым рублём
+POS --> Gateway : 5. Корзина позиций (до списания)
+Gateway --> Clf : 6. Классификация позиций
+Gateway --> Contract : 7. Вердикт: исполнить / отказать
+Gateway --> Log : 8. Запись решения
+Log --> ERP : 9. Выгрузка проводок (этап 2)
+Fraud ..> Control : алерты
+Gateway ..> Fraud : фоновый анализ
+POS ..> OFD : после платежа
+
+note bottom of Contract
+  Интеграция с платформой — этап 3.
+  В прототипе контракт моделируется.
+end note
+@enduml
