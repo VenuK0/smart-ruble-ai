@@ -4,7 +4,8 @@
 import uuid
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, ConfigDict
 from .parser import parse_estimate
 from .classifier import ItemClassifier
@@ -13,7 +14,7 @@ from .data import make_items, make_transactions
 from .antifraud import detect
 from .economics import scenario
 
-app = FastAPI(title="SmartRubleAI Research Prototype", version="0.2.0-rc.1",
+app = FastAPI(title="SmartRubleAI Research Prototype", version="0.2.0-rc.2",
               description="Симуляция на синтетических данных. Не подключено к инфраструктуре цифрового рубля.")
 _rows = make_items(300, 0)
 CLF = ItemClassifier().fit([r[0] for r in _rows], [r[1] for r in _rows])
@@ -149,3 +150,22 @@ def economics_calculator(body: EconomicsIn):
         return scenario(**body.model_dump())
     except ValueError as exc:
         raise HTTPException(422, str(exc)) from exc
+
+
+# Pages of the research workspace. The old /demo URL remains supported.
+# These are local demonstration pages: no authentication, no financial data isolation.
+WEB_ROOT = Path(__file__).with_name("web")
+app.mount("/app/static", StaticFiles(directory=WEB_ROOT), name="workspace-assets")
+WORKSPACE_SECTIONS = {"overview", "estimates", "receipts", "history", "antifraud", "economics"}
+
+
+@app.get("/app", response_class=FileResponse, include_in_schema=False)
+def workspace_home():
+    return FileResponse(WEB_ROOT / "index.html", media_type="text/html")
+
+
+@app.get("/app/{section}", response_class=FileResponse, include_in_schema=False)
+def workspace_page(section: str):
+    if section not in WORKSPACE_SECTIONS:
+        raise HTTPException(404, "Раздел не найден")
+    return FileResponse(WEB_ROOT / "index.html", media_type="text/html")
