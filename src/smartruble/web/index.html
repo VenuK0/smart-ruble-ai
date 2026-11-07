@@ -51,6 +51,7 @@
       <a href="#receipt" class="nav">◈ &nbsp;Проверка чека</a>
       <a href="#audit" class="nav">▤ &nbsp;Журнал решений</a>
       <a href="#fraud" class="nav">◇ &nbsp;Антифрод</a>
+      <a href="#economics" class="nav">◷ &nbsp;Сценарии эффекта</a>
       <a href="/docs" class="nav">⇢ &nbsp;OpenAPI / Swagger</a>
     </div>
     <div class="sidebar-foot">Исследовательский прототип.<br>Данные синтетические.<br>Реальные платежи не выполняются.<br>© 2026 Окунев · Штунь</div>
@@ -101,6 +102,21 @@
         <div class="buttons"><button id="analyze" class="secondary">Запустить исследование</button></div>
         <div id="fraud-msg" class="message"></div>
         <div id="fraud-results" class="result"></div>
+      </section>
+      <section class="panel full" id="economics">
+        <span class="step">05 / ECONOMIC MODEL</span><h2>Сценарная оценка эффекта</h2>
+        <p>Здесь нет реальных замеров и обещанной экономии. Изменяйте предположения и смотрите, при каком объёме операций сервис может окупиться.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px">
+          <div class="field"><label for="econ-count">Отчётов в год</label><input id="econ-count" type="number" min="1" value="5000"></div>
+          <div class="field"><label for="econ-before">Минут вручную</label><input id="econ-before" type="number" min="1" value="20"></div>
+          <div class="field"><label for="econ-after">Минут с сервисом</label><input id="econ-after" type="number" min="0" value="8"></div>
+          <div class="field"><label for="econ-hour">Стоимость часа, ₽</label><input id="econ-hour" type="number" min="1" value="450"></div>
+          <div class="field"><label for="econ-maint">Эксплуатация в год, ₽</label><input id="econ-maint" type="number" min="0" value="200000"></div>
+          <div class="field"><label for="econ-dev">Разработка, ₽</label><input id="econ-dev" type="number" min="0" value="1018000"></div>
+        </div>
+        <div class="buttons"><button id="calculate" class="secondary">Рассчитать сценарий</button></div>
+        <div id="econ-msg" class="message"></div>
+        <div id="econ-results" class="result"></div>
       </section>
     </div>
     <div class="footnote">SmartRubleAI — университетский исследовательский проект. Совместная работа Окунева В. И. и Штунь А. Р. · <a href="https://github.com/VenuK0/smart-ruble-ai" style="color:var(--teal)">GitHub</a></div>
@@ -163,7 +179,7 @@
       if(!selectedGrant)throw Error("Сначала создайте смету слева");
       var lines=el("items").value.split("\n").map(function(s){return s.trim();}).filter(Boolean);
       var items=lines.map(function(row){var p=row.split("|").map(function(s){return s.trim();});if(p.length!==3 || !p[0])throw Error("Используйте формат: название | количество | цена");return {name:p[0],qty:Number(p[1].replace(",",".")),price:Number(p[2].replace(",","."))};});
-      var data={id:"demo-"+crypto.randomUUID(),merchant:el("merchant").value,items:items};
+      var data={id:"demo-"+Date.now()+"-"+Math.random().toString(16).slice(2),merchant:el("merchant").value,items:items};
       var r=await call("/contracts/"+encodeURIComponent(selectedGrant)+"/validate","POST",data);
       message("check-msg","✓ Чек проверен. Решение: "+r.status,false);
       var total=r.approved+r.review+r.personal_pay;
@@ -174,6 +190,22 @@
       el("result").innerHTML=html+"</tbody></table></div>";
       await refresh();
     }catch(e){message("check-msg",e.message,true);}
+  };
+  el("calculate").onclick=async function(){
+    try{
+      var request={
+        workflows_per_year:Number(el("econ-count").value),
+        manual_minutes:Number(el("econ-before").value),
+        automated_minutes:Number(el("econ-after").value),
+        hourly_cost_rub:Number(el("econ-hour").value),
+        maintenance_rub_year:Number(el("econ-maint").value),
+        development_rub:Number(el("econ-dev").value)
+      };
+      var d=await call("/economics/scenario","POST",request);
+      message("econ-msg","Результаты расчёта по введённым предположениям — не подтверждённые показатели внедрения.",false);
+      var payback=d.payback_years===null?"Не достигается":fmt(d.payback_years)+" лет";
+      el("econ-results").innerHTML="<div class='stats' style='margin-bottom:0'><div class='stat'><div class='k'>Часов высвобождается / год</div><div class='v'>"+fmt(d.hours_saved_per_year)+"</div><small>условное сокращение труда</small></div><div class='stat'><div class='k'>Чистый годовой эффект, ₽</div><div class='v'>"+fmt(d.net_effect_rub_year)+"</div><small>без дисконтирования и налогов</small></div><div class='stat'><div class='k'>Окупаемость</div><div class='v' style='font-size:21px'>"+payback+"</div><small>только если эффект положительный</small></div></div>";
+    }catch(e){message("econ-msg",e.message,true);}
   };
   el("refresh").onclick=refresh;
   el("analyze").onclick=async function(){
