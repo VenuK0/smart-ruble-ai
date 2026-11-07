@@ -11,6 +11,7 @@ from .classifier import ItemClassifier
 from .contract import SmartContract
 from .data import make_items, make_transactions
 from .antifraud import detect
+from .economics import scenario
 
 app = FastAPI(title="SmartRubleAI Research Prototype", version="0.2.0-dev",
               description="Симуляция на синтетических данных. Не подключено к инфраструктуре цифрового рубля.")
@@ -131,3 +132,20 @@ def antifraud_demo(seed: int = 0):
                      "planted_anomaly": merchant in planted}
                     for merchant, score in ranked[:10]],
             "warning": "Синтетический сценарий, не показатели реального мошенничества"}
+
+
+class EconomicsIn(StrictModel):
+    workflows_per_year: int = Field(ge=1, le=100000000)
+    manual_minutes: float = Field(gt=0, le=100000)
+    automated_minutes: float = Field(ge=0, le=100000)
+    hourly_cost_rub: float = Field(gt=0, le=100000000)
+    maintenance_rub_year: float = Field(ge=0, le=100000000000)
+    development_rub: float = Field(ge=0, le=100000000000)
+
+
+@app.post("/economics/scenario")
+def economics_calculator(body: EconomicsIn):
+    try:
+        return scenario(**body.model_dump())
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
