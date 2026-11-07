@@ -163,6 +163,8 @@ smart-ruble-ai/
 
 ## Документация
 
+**Версии:** [v0.2.0-rc.1 — текущая предварительная](https://github.com/VenuK0/smart-ruble-ai/releases/tag/v0.2.0-rc.1) · [v0.1.0 — исходная конкурсная](https://github.com/VenuK0/smart-ruble-ai/releases/tag/v0.1.0). Сообщения об ошибках и предложения: [Issues](https://github.com/VenuK0/smart-ruble-ai/issues). Подробнее о развитии: [CONTRIBUTING.md](CONTRIBUTING.md).
+
 | Материал | Назначение |
 |:--|:--|
 | [Техническое задание — PDF](docs/TZ_SmartRubleAI_GOST34.pdf) · [DOCX](docs/TZ_SmartRubleAI_GOST34.docx) | Первоначальное конкурсное ТЗ; может содержать планируемые компоненты |
