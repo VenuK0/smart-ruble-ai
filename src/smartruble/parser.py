@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 import re
+from decimal import Decimal, InvalidOperation
 
 ARTICLE_KEYWORDS = {
     "consumables": ("расходн", "материал", "реактив", "комплектующ"),
@@ -26,13 +27,23 @@ def parse_estimate(text: str) -> dict:
             unparsed.append(raw.strip())
             continue
         name = m.group("name").lower()
-        num = re.sub(r"[^\d,]", "", m.group("sum")).replace(",", ".")
-        if not num:
+        num = re.sub(r"[\s\u00a0\u202f]", "", m.group("sum"))
+        if "," in num and "." in num:
+            separator = "," if num.rfind(",") > num.rfind(".") else "."
+            other = "." if separator == "," else ","
+            num = num.replace(other, "").replace(separator, ".")
+        elif "," in num:
+            num = num.replace(",", ".")
+        try:
+            value = Decimal(num)
+            if not value.is_finite() or value <= 0 or value.as_tuple().exponent < -2:
+                raise ValueError("Некорректная сумма")
+        except (InvalidOperation, ValueError):
             unparsed.append(raw.strip())
             continue
         cat = next((c for c, kws in ARTICLE_KEYWORDS.items() if any(k in name for k in kws)), None)
         if cat is None:
             unparsed.append(raw.strip())
             continue
-        limits[cat] = limits.get(cat, 0.0) + float(num)
+        limits[cat] = limits.get(cat, 0.0) + float(value)
     return {"limits": limits, "unparsed": unparsed}

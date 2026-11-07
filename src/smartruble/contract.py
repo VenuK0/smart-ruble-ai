@@ -4,7 +4,9 @@
 (человек в контуре), а не блокируются автоматически. Аудиторский след — журнал с цепочкой хэшей.
 """
 from __future__ import annotations
-import hashlib, json, time
+import hashlib, json, time, copy
+from decimal import Decimal, InvalidOperation
+from threading import RLock
 from dataclasses import dataclass, field
 
 APPROVE, REVIEW, REJECT = "APPROVE", "REVIEW", "REJECT"
@@ -18,9 +20,11 @@ class SmartContract:
     t_reject: float = 0.60            # порог автоотказа для нецелевых позиций
     spent: dict = field(default_factory=dict)
     log: list = field(default_factory=list)
+    processed_receipts: dict = field(default_factory=dict)
+    _lock: object = field(default_factory=RLock, repr=False)
 
     def remaining(self, cat: str) -> float:
-        return self.limits.get(cat, 0.0) - self.spent.get(cat, 0.0)
+        return round(float(Decimal(str(self.limits.get(cat, 0))) - Decimal(str(self.spent.get(cat, 0)))), 2)
 
     def _item_decision(self, name: str, amount: float):
         cat, conf = self.classifier.predict_one(name)
@@ -37,38 +41,90 @@ class SmartContract:
         return APPROVE, cat, conf, "соответствует статье сметы"
 
     def validate(self, receipt: dict, commit: bool = True) -> dict:
-        """receipt = {'id','merchant','items':[{'name','qty','price'}]}"""
-        items_out, sums = [], {APPROVE: 0.0, REVIEW: 0.0, REJECT: 0.0}
-        for it in receipt["items"]:
-            amount = float(it["price"]) * float(it.get("qty", 1))
-            dec, cat, conf, why = self._item_decision(it["name"], amount)
-            if dec == APPROVE and commit:
-                self.spent[cat] = self.spent.get(cat, 0.0) + amount
-            sums[dec] += amount
-            items_out.append({"name": it["name"], "amount": amount, "decision": dec, "category": cat,
-                              "confidence": round(conf, 3), "reason": why})
-        if sums[REJECT] == 0 and sums[REVIEW] == 0:
-            status = "APPROVED"
-        elif sums[REJECT] == 0:
-            status = "NEEDS_REVIEW"
-        else:
-            status = "PARTIAL"            # нецелевая часть оплачивается личными средствами
-        result = {"receipt_id": receipt.get("id"), "merchant": receipt.get("merchant"), "status": status,
-                  "approved": sums[APPROVE], "review": sums[REVIEW], "personal_pay": sums[REJECT], "items": items_out}
-        self._append_log(result)
-        return result
+        with self._lock:
+            return self._validate_locked(receipt, commit=commit)
+
+    def _validate_locked(self, receipt: dict, commit: bool = True) -> dict:
+        """Прототип: одна и та же операция не должна повторно списывать лимит."""
+        if not isinstance(receipt, dict):
+            raise ValueError("Чек должен быть объектом")
+        rid, merchant, items = receipt.get("id"), receipt.get("merchant"), receipt.get("items")
+        if not isinstance(rid, str) or not rid.strip():
+            raise ValueError("Нужен идентификатор чека")
+        if not isinstance(merchant, str) or not merchant.strip():
+            raise ValueError("Нужен продавец")
+        if not isinstance(items, list) or not 1 <= len(items) <= 100:
+            raise ValueError("Чек должен содержать 1–100 позиций")
+
+        validated = []
+        for item in items:
+            if not isinstance(item, dict) or not isinstance(item.get("name"), str) or not item["name"].strip():
+                raise ValueError("У товара должно быть название")
+            try:
+                price = Decimal(str(item["price"]))
+                qty = Decimal(str(item.get("qty", 1)))
+            except (KeyError, InvalidOperation, ValueError, TypeError) as exc:
+                raise ValueError("Неверная цена или количество") from exc
+            amount = price * qty
+            if not all(x.is_finite() and x > 0 for x in (price, qty, amount)):
+                raise ValueError("Цена и количество должны быть положительными конечными числами")
+            if price.as_tuple().exponent < -2 or amount.as_tuple().exponent < -2:
+                raise ValueError("У суммы может быть не больше двух знаков после запятой")
+            if amount > 1000000000:
+                raise ValueError("Слишком большая сумма позиции")
+            validated.append((item["name"].strip(), amount, str(qty), str(price)))
+
+        fingerprint = hashlib.sha256(
+            json.dumps((merchant.strip(), validated), ensure_ascii=False, sort_keys=True, default=str).encode()
+        ).hexdigest()
+        prev = self.processed_receipts.get(rid)
+        if commit and prev:
+            if prev[0] != fingerprint:
+                raise ValueError("Идентификатор чека уже использован с другим содержимым")
+            return copy.deepcopy(prev[1])
+
+        prior_spent = copy.deepcopy(self.spent)
+        prior_log_len = len(self.log)
+        try:
+            items_out, sums = [], {APPROVE: Decimal(0), REVIEW: Decimal(0), REJECT: Decimal(0)}
+            for name, amount, _, _ in validated:
+                dec, cat, conf, why = self._item_decision(name, float(amount))
+                if dec == APPROVE and commit:
+                    self.spent[cat] = round(float(Decimal(str(self.spent.get(cat, 0))) + amount), 2)
+                sums[dec] += amount
+                items_out.append({"name": name, "amount": float(amount), "decision": dec, "category": cat,
+                                  "confidence": round(conf, 3), "reason": why})
+            if not sums[REJECT] and not sums[REVIEW]:
+                status = "APPROVED"
+            elif not sums[REJECT]:
+                status = "NEEDS_REVIEW"
+            else:
+                status = "PARTIAL"
+            result = {"receipt_id": rid, "merchant": merchant.strip(), "status": status,
+                      "approved": float(sums[APPROVE]), "review": float(sums[REVIEW]),
+                      "personal_pay": float(sums[REJECT]), "items": items_out}
+            if commit:
+                self._append_log(result)
+                self.processed_receipts[rid] = (fingerprint, copy.deepcopy(result))
+            return result
+        except Exception:
+            self.spent = prior_spent
+            del self.log[prior_log_len:]
+            raise
 
     def _append_log(self, record: dict):
         prev = self.log[-1]["hash"] if self.log else "0" * 64
-        body = json.dumps(record, ensure_ascii=False, sort_keys=True)
+        ts = time.time()
+        body = json.dumps({"ts": ts, "record": record}, ensure_ascii=False, sort_keys=True)
         h = hashlib.sha256((prev + body).encode()).hexdigest()
-        self.log.append({"ts": time.time(), "prev": prev, "hash": h, "record": record})
+        self.log.append({"ts": ts, "prev": prev, "hash": h, "record": copy.deepcopy(record)})
 
     def verify_log(self) -> bool:
         prev = "0" * 64
-        for e in self.log:
-            body = json.dumps(e["record"], ensure_ascii=False, sort_keys=True)
-            if e["prev"] != prev or hashlib.sha256((prev + body).encode()).hexdigest() != e["hash"]:
+        for entry in self.log:
+            body = json.dumps({"ts": entry["ts"], "record": entry["record"]},
+                              ensure_ascii=False, sort_keys=True)
+            if entry["prev"] != prev or hashlib.sha256((prev + body).encode()).hexdigest() != entry["hash"]:
                 return False
-            prev = e["hash"]
+            prev = entry["hash"]
         return True

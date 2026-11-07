@@ -1,4 +1,4 @@
-import os, sys, unittest
+import os, sys, unittest, uuid
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from smartruble.parser import parse_estimate
 from smartruble.contract import SmartContract, APPROVE, REVIEW, REJECT
@@ -32,7 +32,7 @@ class ContractTests(unittest.TestCase):
         return SmartContract(limits={"consumables": 5000, "equipment": 20000}, classifier=Stub())
 
     def rc(self, *items):
-        return {"id": "r1", "merchant": "M1", "items": [{"name": n, "qty": 1, "price": p} for n, p in items]}
+        return {"id": "r-" + uuid.uuid4().hex[:12], "merchant": "M1", "items": [{"name": n, "qty": 1, "price": p} for n, p in items]}
 
     def test_approve_and_balance(self):
         c = self.mk(); r = c.validate(self.rc(("arduino", 2500)))
