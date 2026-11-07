@@ -7,7 +7,7 @@
 ![Python](https://img.shields.io/badge/python-3.11%2B-256569?logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-prototype-256569?logo=fastapi&logoColor=white)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-classifier-256569?logo=scikitlearn&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-10%20passed-10B981)
+![Tests](https://img.shields.io/badge/tests-GitHub%20Actions-10B981)
 ![Status](https://img.shields.io/badge/status-prototype--simulation-F59E0B)
 ![License](https://img.shields.io/badge/license-MIT-blue)
 
@@ -17,7 +17,28 @@
 
 > **Честно о статусе.** Это **прототип-симуляция**. Интеграции с платформой цифрового рубля Банка России нет, все данные синтетические, реальные чеки и персональные данные не использовались. Слабые места системы названы и измерены ниже.
 
+
+> **Ветка forum-v0.2 — разработка для возможного финала чемпионата.**
+> Исходная отправленная версия сохранена в [archive/forum-submission-2026](https://github.com/VenuK0/smart-ruble-ai/tree/archive/forum-submission-2026); основная ветка main не изменена. v0.2 пока не опубликована как релиз.
+
+### Интерактивная демонстрация v0.2
+
+Запуск из корня репозитория после установки зависимостей:
+
+~~~bash
+pip install -r requirements-dev.txt
+python -m unittest discover -s tests -v
+python -m uvicorn smartruble.api:app --app-dir src --host 127.0.0.1 --port 8000
+~~~
+
+Открыть http://127.0.0.1:8000/demo — проверка сметы и позиций чека, журнал, антифрод на синтетических данных, расчёт условного экономического эффекта. http://127.0.0.1:8000/docs — API Swagger.
+
+Добавлены строгая проверка сумм, защита от повторов, синхронизация обработки в одном процессе и откат при ошибках. **Это по-прежнему учебная симуляция без интеграции с цифровым рублём.** Состояние хранится в памяти, авторизации нет; нельзя публиковать API как производственный финансовый сервис.
+
+Документация: [демо для жюри](docs/DEMO_RUNBOOK.md) · [экономическая модель](docs/ECONOMIC_MODEL.md). Экономические показатели — примерные расчёты по предположениям, не результаты пилота.
+
 ---
+
 
 ## Идея за 30 секунд
 
@@ -120,7 +141,7 @@ cd smart-ruble-ai
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-python -m unittest discover -s tests -v               # 10 тестов
+python -m unittest discover -s tests -v       # тесты ядра, API и безопасности
 cd src && python -m smartruble                        # метрики и график
 cd .. && uvicorn smartruble.api:app --app-dir src     # API и Swagger: http://127.0.0.1:8000/docs
 ```
