@@ -10,7 +10,7 @@ Linux/macOS: PYTHONPATH=src python -m smartruble.robustness
 
 PowerShell: $env:PYTHONPATH="src"; python -m smartruble.robustness
 
-Команда выполняется автоматически в GitHub Actions на ветке forum-v0.2.
+Команда выполняется автоматически в GitHub Actions в основной ветке main.
 
 ## Методика
 
