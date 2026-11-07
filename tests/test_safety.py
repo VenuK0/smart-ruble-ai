@@ -64,5 +64,32 @@ class SafetyTests(unittest.TestCase):
         self.assertEqual(len(c.log), 0)
 
 
+    def test_second_item_exception_rolls_back_all_changes(self):
+        class Intermittent:
+            def __init__(self):
+                self.calls = 0
+            def predict_one(self, name):
+                self.calls += 1
+                if self.calls == 2:
+                    raise RuntimeError("simulated classifier failure")
+                return ("consumables", .99)
+        c = SmartContract(limits={"consumables": 1000}, classifier=Intermittent())
+        r = {"id": "fail", "merchant": "m",
+             "items": [{"name": "A", "price": 100}, {"name": "B", "price": 150}]}
+        with self.assertRaisesRegex(RuntimeError, "simulated"):
+            c.validate(r)
+        self.assertEqual(c.spent, {})
+        self.assertEqual(c.log, [])
+
+    def test_concurrent_retries_process_once(self):
+        from concurrent.futures import ThreadPoolExecutor
+        c = self.contract()
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            results = list(pool.map(lambda _: c.validate(self.receipt()), range(24)))
+        self.assertEqual(len(c.log), 1)
+        self.assertEqual(c.remaining("consumables"), 900)
+        self.assertTrue(all(result == results[0] for result in results))
+
+
 if __name__ == "__main__":
     unittest.main()
