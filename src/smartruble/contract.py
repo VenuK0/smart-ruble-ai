@@ -6,6 +6,7 @@
 from __future__ import annotations
 import hashlib, json, time, copy
 from decimal import Decimal, InvalidOperation
+from threading import RLock
 from dataclasses import dataclass, field
 
 APPROVE, REVIEW, REJECT = "APPROVE", "REVIEW", "REJECT"
@@ -20,6 +21,7 @@ class SmartContract:
     spent: dict = field(default_factory=dict)
     log: list = field(default_factory=list)
     processed_receipts: dict = field(default_factory=dict)
+    _lock: object = field(default_factory=RLock, repr=False)
 
     def remaining(self, cat: str) -> float:
         return round(float(Decimal(str(self.limits.get(cat, 0))) - Decimal(str(self.spent.get(cat, 0)))), 2)
@@ -39,6 +41,10 @@ class SmartContract:
         return APPROVE, cat, conf, "соответствует статье сметы"
 
     def validate(self, receipt: dict, commit: bool = True) -> dict:
+        with self._lock:
+            return self._validate_locked(receipt, commit=commit)
+
+    def _validate_locked(self, receipt: dict, commit: bool = True) -> dict:
         """Прототип: одна и та же операция не должна повторно списывать лимит."""
         if not isinstance(receipt, dict):
             raise ValueError("Чек должен быть объектом")
@@ -77,27 +83,34 @@ class SmartContract:
                 raise ValueError("Идентификатор чека уже использован с другим содержимым")
             return copy.deepcopy(prev[1])
 
-        items_out, sums = [], {APPROVE: Decimal(0), REVIEW: Decimal(0), REJECT: Decimal(0)}
-        for name, amount, _, _ in validated:
-            dec, cat, conf, why = self._item_decision(name, float(amount))
-            if dec == APPROVE and commit:
-                self.spent[cat] = round(float(Decimal(str(self.spent.get(cat, 0))) + amount), 2)
-            sums[dec] += amount
-            items_out.append({"name": name, "amount": float(amount), "decision": dec, "category": cat,
-                              "confidence": round(conf, 3), "reason": why})
-        if not sums[REJECT] and not sums[REVIEW]:
-            status = "APPROVED"
-        elif not sums[REJECT]:
-            status = "NEEDS_REVIEW"
-        else:
-            status = "PARTIAL"
-        result = {"receipt_id": rid, "merchant": merchant.strip(), "status": status,
-                  "approved": float(sums[APPROVE]), "review": float(sums[REVIEW]),
-                  "personal_pay": float(sums[REJECT]), "items": items_out}
-        if commit:
-            self._append_log(result)
-            self.processed_receipts[rid] = (fingerprint, copy.deepcopy(result))
-        return result
+        prior_spent = copy.deepcopy(self.spent)
+        prior_log_len = len(self.log)
+        try:
+            items_out, sums = [], {APPROVE: Decimal(0), REVIEW: Decimal(0), REJECT: Decimal(0)}
+            for name, amount, _, _ in validated:
+                dec, cat, conf, why = self._item_decision(name, float(amount))
+                if dec == APPROVE and commit:
+                    self.spent[cat] = round(float(Decimal(str(self.spent.get(cat, 0))) + amount), 2)
+                sums[dec] += amount
+                items_out.append({"name": name, "amount": float(amount), "decision": dec, "category": cat,
+                                  "confidence": round(conf, 3), "reason": why})
+            if not sums[REJECT] and not sums[REVIEW]:
+                status = "APPROVED"
+            elif not sums[REJECT]:
+                status = "NEEDS_REVIEW"
+            else:
+                status = "PARTIAL"
+            result = {"receipt_id": rid, "merchant": merchant.strip(), "status": status,
+                      "approved": float(sums[APPROVE]), "review": float(sums[REVIEW]),
+                      "personal_pay": float(sums[REJECT]), "items": items_out}
+            if commit:
+                self._append_log(result)
+                self.processed_receipts[rid] = (fingerprint, copy.deepcopy(result))
+            return result
+        except Exception:
+            self.spent = prior_spent
+            del self.log[prior_log_len:]
+            raise
 
     def _append_log(self, record: dict):
         prev = self.log[-1]["hash"] if self.log else "0" * 64
