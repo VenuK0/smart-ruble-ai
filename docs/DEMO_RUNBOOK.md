@@ -1,4 +1,4 @@
-# Сценарий демонстрации SmartRubleAI v0.2 (5 минут)
+# Сценарий демонстрации SmartRubleAI v0.2.0-rc.1 (5 минут)
 
 Исследовательский прототип. **Ни одна операция в нем не переводит цифровые рубли**. Данные синтетические. При оценке жюри разделять работающие функции, концепцию и будущие интеграции.
 
@@ -6,7 +6,7 @@
 
 На компьютере с Python 3.11+:
 
-1. git clone -b forum-v0.2 https://github.com/VenuK0/smart-ruble-ai.git
+1. git clone https://github.com/VenuK0/smart-ruble-ai.git
 2. cd smart-ruble-ai
 3. python -m venv .venv
 4. Windows: .venv\Scripts\activate
