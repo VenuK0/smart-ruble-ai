@@ -217,6 +217,21 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn('.estimate-form-grid textarea', css)
         self.assertIn('@media(max-width:760px)', css)
 
+    def test_active_budget_details_precede_create_new_budget(self):
+        script = self.client.get("/app/static/app.js").text
+        self.assertIn('function suggestedGrantId()', script)
+        self.assertIn('new Date().getFullYear()', script)
+        self.assertIn('while(used.has(base+"-"+n))n++', script)
+        self.assertIn('field("grant-name","Номер сметы",suggestedGrantId())', script)
+        self.assertIn('$("grant-name").value=suggestedGrantId()', script)
+        self.assertIn('panel("Новая смета"', script)
+        first = script.index('(estimate?\'<div class="stack detail-stack"')
+        second = script.index('panel("Новая смета"')
+        self.assertLess(first, second)
+        self.assertIn('href="/app/receipts">Проверить чек', script)
+        css = self.client.get("/app/static/workspace.css").text
+        self.assertIn('.estimates-layout .detail-stack{margin:0', css)
+
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
         self.assertIn("#FBF7F1", css)
