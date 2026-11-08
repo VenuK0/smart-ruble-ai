@@ -77,9 +77,10 @@ class WorkspaceTests(unittest.TestCase):
                 response = self.client.get("/app/static/brand/" + name)
                 self.assertEqual(response.status_code, 200)
                 root = ET.fromstring(response.text)
+                expected_stroke = "4.8" if name == "logo.svg" else "6.5"
                 contours = [
                     group for group in root.findall(".//s:g", ns)
-                    if group.attrib.get("stroke-width") == "14"
+                    if group.attrib.get("stroke-width") == expected_stroke
                 ]
                 self.assertEqual(len(contours), 1)
                 self.assertEqual(contours[0].attrib["stroke"], "#BB080B")
@@ -90,6 +91,7 @@ class WorkspaceTests(unittest.TestCase):
                     and len(group.findall("s:rect", ns)) == 2
                 ]
                 self.assertEqual(len(symbol), 1)
+                self.assertEqual(symbol[0].attrib.get("transform"), "translate(-7 0)")
                 self.assertEqual(len(symbol[0].findall("s:path", ns)), 1)
                 self.assertEqual(len(symbol[0].findall("s:rect", ns)), 2)
                 if name == "favicon.svg":
@@ -101,6 +103,33 @@ class WorkspaceTests(unittest.TestCase):
                     # Text is outlined in paths: it cannot change fonts in GitHub dark mode.
                     self.assertEqual(len(root.findall(".//s:text", ns)), 0)
                     self.assertGreater(len(root.findall(".//s:path", ns)), 25)
+
+    def test_sidebar_uses_exact_vector_wordmark_instead_of_html_retyping(self):
+        html = self.client.get("/app").text
+        self.assertIn('class="brand-lockup"', html.replace('class="brand brand-lockup"', 'class="brand-lockup"'))
+        self.assertIn('/app/static/brand/wordmark.svg?v=5', html)
+        self.assertIn('/app/static/brand/mark.svg?v=5', html)
+        self.assertNotIn('<span class="brand-text">', html)
+        self.assertIn("КОНТРОЛЬ ГРАНТОВ И РАСХОДОВ", html)
+        response = self.client.get("/app/static/brand/wordmark.svg")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('viewBox="244 51 658 77"', response.text)
+        self.assertIn('#BB080B', response.text)
+        self.assertIn('#111111', response.text)
+        from xml.etree import ElementTree as ET
+        root = ET.fromstring(response.text)
+        self.assertEqual(len(root.findall('.//{http://www.w3.org/2000/svg}text')), 0)
+        self.assertGreaterEqual(len(root.findall('.//{http://www.w3.org/2000/svg}path')), 12)
+
+    def test_sidebar_brand_colors_and_readability_are_theme_independent(self):
+        css = self.client.get("/app/static/design.css").text
+        self.assertIn('.brand.brand-lockup', css)
+        self.assertIn('background:#FBF7F1', css)
+        self.assertIn('min-height:79px', css)
+        self.assertIn('width:56px', css)
+        self.assertIn('font-size:8.45px', css)
+        self.assertIn('grid-template-columns:286px', css)
+        self.assertIn('data-theme="dark"', css)
 
     def test_theme_switch_and_responsive_navigation(self):
         html = self.client.get("/app").text
