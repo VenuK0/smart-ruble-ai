@@ -1,0 +1,230 @@
+/* СмартРубль AI — навигационная система v0.3
+   Документная структура: работа со средствами / аналитика.
+   Иконки служат сокращением подписей, а не самостоятельным UI на телефоне. */
+
+:root{
+  --sidebar-expanded:286px;
+  --sidebar-compact:78px;
+}
+.sidebar{
+  overflow-x:hidden;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:#DDD6CF transparent;
+}
+.sidebar-nav-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin:4px 2px 11px;
+  min-height:35px;
+  padding:0 4px 0 10px;
+}
+.sidebar-nav-heading{
+  color:#9A8D81;
+  font-weight:680;
+  font-size:10px;
+  line-height:1.4;
+  text-transform:uppercase;
+  letter-spacing:.09em;
+}
+.sidebar-collapse{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 32px;
+  width:32px;
+  height:32px;
+  padding:6px;
+  background:transparent;
+  border:1px solid transparent;
+  border-radius:7px;
+  color:#81776E;
+  cursor:pointer;
+}
+.sidebar-collapse:hover{
+  background:#F1EBE4;
+  color:#2A2421;
+  border-color:#E4DBD1;
+}
+.sidebar-collapse:focus-visible{
+  outline:2px solid #BB080B;
+  outline-offset:2px;
+}
+.collapse-icon{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}
+#navigation{display:block;min-width:0}
+.nav-section{display:grid;align-content:start;gap:3px}
+.nav-section + .nav-section{margin-top:22px}
+.nav-group-title{
+  display:block;
+  padding:0 12px 9px;
+  margin:0;
+  color:#91867D;
+  font-size:10px;
+  font-weight:650;
+  line-height:1.35;
+  letter-spacing:.075em;
+  text-transform:uppercase;
+}
+.nav-section a{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  min-height:43px;
+  padding:10px 12px;
+  text-decoration:none;
+  border:1px solid transparent;
+  border-radius:8px;
+  line-height:1.3;
+  color:#56504A;
+  white-space:nowrap;
+  transition:color .16s ease,background-color .16s ease;
+}
+.nav-section a:hover{background:#F3ECE5;color:#2D2521}
+.nav-section a[aria-current="page"]{
+  background:#F8EAE8;
+  color:#9D1318;
+  font-weight:680;
+}
+.nav-section a[aria-current="page"]:before{
+  width:3px;
+  left:0;
+  top:10px;
+  bottom:10px;
+  background:#BB080B;
+}
+.nav-section a .nav-text{display:block;overflow:hidden;text-overflow:ellipsis}
+.nav-section a .nav-icon{
+  flex:0 0 18px;
+  width:18px;
+  height:18px;
+  stroke-width:1.65;
+}
+.nav-section a[aria-current="page"] .nav-icon{stroke-width:1.85}
+.sidebar-bottom{
+  gap:4px;
+  padding:15px 4px 2px;
+  border-top-color:#DED6CC;
+}
+.sidebar-note{
+  padding:4px 7px 10px;
+  font-size:11px;
+  line-height:1.4;
+}
+.sidebar-bottom a{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#766D65;
+  text-decoration:none;
+  padding:9px 8px;
+  border-radius:7px;
+  min-height:38px;
+  font-size:11.5px;
+}
+.sidebar-bottom a:hover{color:#3C3029;background:#F1EBE4;text-decoration:none}
+.footer-icon{
+  display:block;
+  flex:0 0 17px;
+  width:17px;
+  height:17px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:1.55;
+  stroke-linejoin:round;
+  stroke-linecap:round;
+}
+.footer-link-text{white-space:nowrap}
+
+@media (min-width:961px){
+  .shell{grid-template-columns:var(--sidebar-expanded) minmax(0,1fr)}
+  .sidebar{width:var(--sidebar-expanded)}
+  html[data-sidebar="collapsed"] .shell{
+    grid-template-columns:var(--sidebar-compact) minmax(0,1fr);
+  }
+  html[data-sidebar="collapsed"] .sidebar{
+    width:var(--sidebar-compact);
+    padding:18px 9px 14px;
+  }
+  html[data-sidebar="collapsed"] .brand.brand-lockup{
+    justify-content:center;
+    width:100%;
+    gap:0;
+    padding:7px 3px;
+    min-height:66px;
+    margin-bottom:11px;
+  }
+  html[data-sidebar="collapsed"] .brand.brand-lockup .brand-mark{
+    flex:0 0 46px;
+    min-width:46px;
+    width:46px;
+    height:46px;
+  }
+  html[data-sidebar="collapsed"] .brand-copy,
+  html[data-sidebar="collapsed"] .sidebar-nav-heading,
+  html[data-sidebar="collapsed"] .nav-group-title,
+  html[data-sidebar="collapsed"] .nav-text,
+  html[data-sidebar="collapsed"] .sidebar-note,
+  html[data-sidebar="collapsed"] .footer-link-text{
+    display:none;
+  }
+  html[data-sidebar="collapsed"] .sidebar-nav-header{
+    display:flex;
+    justify-content:center;
+    margin:3px 0 12px;
+    padding:0;
+  }
+  html[data-sidebar="collapsed"] .sidebar-collapse{
+    border-color:#E4DBD1;
+    background:#F8F4EF;
+  }
+  html[data-sidebar="collapsed"] .sidebar-collapse .collapse-icon{
+    transform:rotate(180deg);
+  }
+  html[data-sidebar="collapsed"] .nav-section{gap:5px}
+  html[data-sidebar="collapsed"] .nav-section + .nav-section{
+    border-top:1px solid #E5DCD2;
+    padding-top:16px;
+    margin-top:18px;
+  }
+  html[data-sidebar="collapsed"] .nav-section a{
+    justify-content:center;
+    width:100%;
+    min-height:45px;
+    padding:11px 0;
+  }
+  html[data-sidebar="collapsed"] .nav-section a .nav-icon{
+    flex-basis:20px;
+    width:20px;
+    height:20px;
+  }
+  html[data-sidebar="collapsed"] .nav-section a[aria-current="page"]:before{
+    left:0;top:9px;bottom:9px;
+  }
+  html[data-sidebar="collapsed"] .sidebar-bottom{
+    padding:13px 0 0;
+    justify-items:center;
+  }
+  html[data-sidebar="collapsed"] .sidebar-bottom a{
+    justify-content:center;
+    width:100%;
+    min-height:41px;
+    padding:10px 0;
+  }
+  html[data-sidebar="collapsed"] .sidebar-bottom a .footer-icon{
+    flex-basis:19px;
+    width:19px;
+    height:19px;
+  }
+}
+@media(max-width:960px){
+  /* The drawer is always fully labelled on phones/tablets,
+     regardless of saved desktop collapse state. */
+  .sidebar{width:286px}
+  .sidebar-collapse{display:none}
+  .sidebar-nav-header{padding-left:12px;margin-bottom:7px}
+  .nav-section + .nav-section{margin-top:18px}
+}
+@media(prefers-reduced-motion:reduce){
+  .nav-section a{transition:none}
+}

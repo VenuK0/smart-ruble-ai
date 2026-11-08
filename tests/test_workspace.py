@@ -232,6 +232,44 @@ class WorkspaceTests(unittest.TestCase):
         css = self.client.get("/app/static/workspace.css").text
         self.assertIn('.estimates-layout .detail-stack{margin:0', css)
 
+    def test_grouped_navigation_and_real_destinations(self):
+        html = self.client.get("/app").text
+        self.assertIn('id="sidebar-collapse"', html)
+        self.assertIn('aria-controls="navigation"', html)
+        self.assertIn('aria-label="Свернуть боковое меню"', html)
+        self.assertIn('aria-labelledby="nav-work-label"', html)
+        self.assertIn('aria-labelledby="nav-analytics-label"', html)
+        self.assertIn('Работа со средствами', html)
+        self.assertIn('Аналитика', html)
+        self.assertEqual(html.count('class="nav-text"'), 6)
+        for section in ["overview", "estimates", "receipts", "history",
+                        "antifraud", "economics"]:
+            self.assertIn('data-page="'+section+'"', html)
+        self.assertIn('/app/static/navigation.css?v=1', html)
+        self.assertIn('/app/static/navigation.js?v=1', html)
+        self.assertIn('localStorage.getItem("smartruble-sidebar")', html)
+        self.assertNotIn('href="#', html)
+
+    def test_sidebar_has_functional_compact_and_mobile_modes(self):
+        css = self.client.get("/app/static/navigation.css")
+        js = self.client.get("/app/static/navigation.js")
+        self.assertEqual(css.status_code, 200)
+        self.assertEqual(js.status_code, 200)
+        for code in [
+            '@media (min-width:961px)', 'data-sidebar="collapsed"',
+            '--sidebar-compact:78px', '.nav-section',
+            '.footer-link-text', '@media(max-width:960px)'
+        ]:
+            self.assertIn(code, css.text)
+        self.assertIn('localStorage.setItem(key,next)', js.text)
+        self.assertIn('aria-expanded', js.text)
+        self.assertIn('aria-label', js.text)
+        html = self.client.get("/app").text
+        self.assertIn('id="menu-toggle"', html)
+        self.assertIn('id="mobile-scrim"', html)
+        self.assertIn('title="Исходный код"', html)
+        self.assertIn('title="Документация API"', html)
+
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
         self.assertIn("#FBF7F1", css)

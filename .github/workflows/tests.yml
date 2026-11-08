@@ -25,8 +25,9 @@ jobs:
         run: |
           node --check src/smartruble/web/app.js
           node --check src/smartruble/web/export.js
-      - name: Test safe finance register CSV export
-        run: node --test tests/test_csv.mjs
+          node --check src/smartruble/web/navigation.js
+      - name: Test safe exports and accessible navigation
+        run: node --test tests/test_csv.mjs tests/test_navigation.mjs
       - name: Run unit and API tests
         run: python -m unittest discover -s tests -v
       - name: Reproduce synthetic stress evaluation
