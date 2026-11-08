@@ -102,6 +102,33 @@ class WorkspaceTests(unittest.TestCase):
                     self.assertEqual(len(root.findall(".//s:text", ns)), 0)
                     self.assertGreater(len(root.findall(".//s:path", ns)), 25)
 
+    def test_theme_switch_and_responsive_navigation(self):
+        html = self.client.get("/app").text
+        self.assertIn('id="theme-toggle"', html)
+        self.assertIn('aria-pressed="false"', html)
+        self.assertIn('id="mobile-scrim"', html)
+        self.assertIn('aria-controls="navigation"', html)
+        self.assertIn('/app/static/design.css', html)
+        self.assertIn('/app/static/theme.js', html)
+        self.assertIn('smartruble-theme', html)
+        for url, words in [
+            ("/app/static/design.css", ['data-theme="dark"', "--stat-good", "@media(max-width:680px)"]),
+            ("/app/static/theme.js", ["localStorage.setItem", "aria-pressed", "Тёмная тема"]),
+        ]:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200)
+            for word in words:
+                self.assertIn(word, response.text)
+        self.assertIn('class="nav-icon"', html)
+
+    def test_theme_is_shared_across_all_bookmarkable_pages(self):
+        for path in ["/app", "/app/estimates", "/app/receipts", "/app/history",
+                     "/app/antifraud", "/app/economics"]:
+            with self.subTest(path=path):
+                html = self.client.get(path).text
+                self.assertIn('/app/static/design.css', html)
+                self.assertIn('/app/static/theme.js', html)
+
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
         self.assertIn("#FBF7F1", css)
