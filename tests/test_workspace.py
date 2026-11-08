@@ -172,7 +172,7 @@ class WorkspaceTests(unittest.TestCase):
         for url in ["/app", "/app/estimates", "/app/receipts", "/app/history"]:
             with self.subTest(url=url):
                 page = self.client.get(url).text
-                self.assertIn("/app/static/workspace.css?v=1", page)
+                self.assertIn("/app/static/workspace.css?v=2", page)
                 self.assertIn("/app/static/export.js?v=1", page)
                 self.assertIn("/app/static/app.js?v=7", page)
         css = self.client.get("/app/static/workspace.css")
@@ -200,6 +200,22 @@ class WorkspaceTests(unittest.TestCase):
         ]:
             with self.subTest(item=item):
                 self.assertIn(item, script)
+
+    def test_estimates_use_compact_form_and_clean_main_outline(self):
+        html = self.client.get("/app/estimates").text
+        self.assertIn('/app/static/workspace.css?v=2', html)
+        self.assertIn('<main class="content" id="page">', html)
+        self.assertNotIn('tabindex="-1"', html)
+        js = self.client.get("/app/static/app.js").text
+        self.assertIn('class="estimates-layout"', js)
+        self.assertIn('class="estimate-form-grid"', js)
+        self.assertIn('class="register-empty"', js)
+        self.assertIn('Смет пока нет', js)
+        self.assertIn('if(contracts.length){', js)
+        css = self.client.get("/app/static/workspace.css").text
+        self.assertIn('grid-template-columns:minmax(230px,.7fr) minmax(0,1.3fr)', css)
+        self.assertIn('.estimate-form-grid textarea', css)
+        self.assertIn('@media(max-width:760px)', css)
 
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
