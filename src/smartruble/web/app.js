@@ -289,6 +289,7 @@
     }
     function setLocked(value){
       locked=value;
+      form.classList.toggle("receipt-locked",value);
       Array.from(form.querySelectorAll("input,button")).forEach(function(el){
         if(el.id!=="receipt-new")el.disabled=value;
       });
@@ -372,8 +373,12 @@
           '<div class="receipt-result-links"><a href="/app/history" class="btn secondary btn-sm">Открыть журнал</a></div></div>';
         say("receipt-msg","Чек сохранён в журнале. Для следующей проверки нажмите «Новый чек».");
         setLocked(true);
-        await reloadContracts(false);
-        toast("Проверка завершена");
+        try{
+          await reloadContracts(false);
+          toast("Проверка завершена");
+        }catch(refreshErr){
+          toast("Чек сохранён, но данные сметы не обновились. Откройте страницу смет.",true);
+        }
       }catch(err){
         say("receipt-msg",err.message,true);
         submit.disabled=false;
