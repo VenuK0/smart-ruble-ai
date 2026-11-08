@@ -174,7 +174,7 @@ class WorkspaceTests(unittest.TestCase):
                 page = self.client.get(url).text
                 self.assertIn("/app/static/workspace.css?v=2", page)
                 self.assertIn("/app/static/export.js?v=1", page)
-                self.assertIn("/app/static/app.js?v=7", page)
+                self.assertIn("/app/static/app.js?v=8", page)
         css = self.client.get("/app/static/workspace.css")
         self.assertEqual(css.status_code, 200)
         self.assertIn(".welcome-panel", css.text)
@@ -269,6 +269,51 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn('id="mobile-scrim"', html)
         self.assertIn('title="Исходный код"', html)
         self.assertIn('title="Документация API"', html)
+
+    def test_receipt_editor_uses_financial_document_layout(self):
+        html = self.client.get("/app/receipts").text
+        self.assertIn('/app/static/receipts.css?v=1', html)
+        self.assertIn('/app/static/receipt-utils.js?v=1', html)
+        self.assertIn('/app/static/app.js?v=8', html)
+        script = self.client.get("/app/static/app.js").text
+        for text in [
+            'class="receipt-context"',
+            'class="receipts-layout"',
+            'class="receipt-row receipt-columns"',
+            'id="receipt-count"',
+            'id="receipt-total"',
+            'class="receipt-line-total"',
+            'window.SRReceipt.inspect',
+            'class="receipt-outcomes"',
+            'class="receipt-decision-row"',
+            'Статья: ',
+            'Причина не указана',
+            'id="receipt-new"',
+            'setLocked(true)',
+            'draftId=payload.id',
+        ]:
+            with self.subTest(text=text):
+                self.assertIn(text, script)
+
+    def test_receipt_form_assets_and_safety_explanations(self):
+        for asset in ["/app/static/receipts.css", "/app/static/receipt-utils.js"]:
+            response = self.client.get(asset)
+            self.assertEqual(response.status_code, 200)
+        css = self.client.get("/app/static/receipts.css").text
+        for token in [
+            ".receipt-context", ".receipt-form-body", ".receipt-outcomes",
+            ".receipt-decision-text", "@media(max-width:680px)",
+            "#receipt-new[hidden]",
+        ]:
+            self.assertIn(token, css)
+        logic = self.client.get("/app/static/receipt-utils.js").text
+        self.assertIn("amount*100-cents", logic)
+        self.assertIn("items.length>100", logic)
+        script = self.client.get("/app/static/app.js").text
+        self.assertIn("не списаны из лимита автоматически", script)
+        self.assertIn("setLocked(true)", script)
+        self.assertIn("await reloadContracts(false)", script)
+        self.assertIn("Чек сохранён, но данные сметы не обновились", script)
 
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
