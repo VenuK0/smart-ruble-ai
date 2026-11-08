@@ -127,18 +127,23 @@
   }
   function showEstimates(){
     root.innerHTML=section("Сметы и лимиты","Реестр смет, остатки средств и статьи расходов.")+
-      '<div class="columns wide-first">'+
-      panel("Реестр смет",'<div class="toolbar register-toolbar"><div class="left">'+
+      '<div class="estimates-layout">'+
+      panel("Реестр смет",contracts.length?
+        '<div class="toolbar register-toolbar"><div class="left">'+
         '<label class="sr-only" for="estimate-search">Поиск сметы</label>'+
         '<input class="input" id="estimate-search" placeholder="Найти смету по номеру" autocomplete="off">'+
         '</div><div class="right"><span class="registry-count" id="estimate-count"></span>'+
-        '<button class="btn secondary btn-sm" id="estimate-export" type="button"'+(contracts.length?'':' disabled')+'>Экспорт CSV</button></div></div>'+
-        '<div id="estimate-table"></div>')+
-      panel("Создание сметы",'<div class="panel-body"><form id="estimate-form">'+
-        field("grant-name","Номер / идентификатор","грант-2026")+
-        '<div class="field with-top-gap"><label for="estimate-text">Статьи и лимиты</label>'+
-        '<textarea id="estimate-text" rows="7" maxlength="30000" required>Расходные материалы — 50 000 ₽\nОборудование — 120 000 ₽\nУслуги хостинга — 10 000 ₽</textarea>'+
-        '<div class="field-help">Каждая статья — на отдельной строке. Нераспознанные записи требуют ручной проверки.</div></div>'+
+        '<button class="btn secondary btn-sm" id="estimate-export" type="button">Экспорт CSV</button></div></div>'+
+        '<div id="estimate-table"></div>':
+        '<div class="register-empty"><div class="register-empty-symbol" aria-hidden="true">01</div>'+
+        '<div><h3>Смет пока нет</h3><p>Создайте первую смету в форме ниже. После этого здесь появятся лимиты, остатки и история проверок.</p></div></div>')+
+      panel("Создание сметы",'<div class="panel-body estimate-form-body"><form id="estimate-form">'+
+        '<div class="estimate-form-grid"><div class="estimate-form-primary">'+
+        field("grant-name","Номер сметы","грант-2026")+
+        '<p class="field-help">Уникальный идентификатор, например «грант-2026».</p></div>'+
+        '<div class="field"><label for="estimate-text">Статьи и лимиты</label>'+
+        '<textarea id="estimate-text" rows="5" maxlength="30000" required>Расходные материалы — 50 000 ₽\nОборудование — 120 000 ₽\nУслуги хостинга — 10 000 ₽</textarea>'+
+        '<div class="field-help">Каждая статья — отдельной строкой. Нераспознанные записи требуют ручной проверки.</div></div></div>'+
         '<div class="form-actions"><button class="btn primary" type="submit">Создать смету</button>'+
         '<button class="btn secondary" type="button" id="new-example">Заполнить пример</button></div>'+
         formMessage("estimate-msg")+'</form></div>')+
@@ -151,16 +156,18 @@
       $("estimate-count").textContent="Смет: "+filtered.length;
       bindGrantButtons();
     }
-    $("estimate-search").addEventListener("input",paintList);
-    paintList();
-    $("estimate-export").onclick=function(){
+    if(contracts.length){
+      $("estimate-search").addEventListener("input",paintList);
+      paintList();
+      $("estimate-export").onclick=function(){
       var q=$("estimate-search").value.trim().toLocaleLowerCase("ru-RU");
       var filtered=contracts.filter(function(x){return x.grant_id.toLocaleLowerCase("ru-RU").includes(q);});
       if(!filtered.length){toast("Нет смет для выгрузки",true);return;}
       window.SRCSV.download("smartruble-estimates.csv",
         ["Смета","Лимит, ₽","Одобрено, ₽","Остаток, ₽","Обработано чеков"],
         filtered.map(function(x){var limit=sum(x.limits),spent=sum(x.spent);return [x.grant_id,limit,spent,Math.max(0,limit-spent),x.transactions];}));
-    };
+      };
+    }
     $("estimate-form").onsubmit=async function(e){
       e.preventDefault();
       var id=$("grant-name").value.trim();
