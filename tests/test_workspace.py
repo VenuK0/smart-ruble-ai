@@ -69,6 +69,36 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn("Контроль грантов и расходов",
                       self.client.get("/app/static/brand/logo.svg").text)
 
+    def test_approved_red_contour_black_ruble(self):
+        from xml.etree import ElementTree as ET
+        ns = {"svg": "http://www.w3.org/2000/svg"}
+        for name in ("mark.svg", "favicon.svg", "logo.svg"):
+            with self.subTest(name=name):
+                response = self.client.get("/app/static/brand/" + name)
+                self.assertEqual(response.status_code, 200)
+                root = ET.fromstring(response.text)
+                corners = [
+                    group for group in root.findall(".//svg:g", ns)
+                    if group.attrib.get("stroke-width") == "7"
+                ]
+                self.assertEqual(len(corners), 1)
+                corner_paths = corners[0].findall("svg:path", ns)
+                self.assertEqual(len(corner_paths), 4)
+                self.assertTrue(all(
+                    path.attrib.get("stroke") == "#BB080B"
+                    for path in corner_paths
+                ))
+                symbol = [
+                    path for path in root.findall(".//svg:path", ns)
+                    if path.attrib.get("stroke-width") == "5.4"
+                ]
+                self.assertEqual(len(symbol), 1)
+                self.assertEqual(symbol[0].attrib.get("stroke"), "#191919")
+                if name == "favicon.svg":
+                    background = root.find("svg:rect", ns)
+                    self.assertIsNotNone(background)
+                    self.assertEqual(background.attrib.get("fill"), "#F0EDE8")
+
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
         self.assertIn("#F0EDE8", css)
