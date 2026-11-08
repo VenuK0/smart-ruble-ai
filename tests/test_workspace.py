@@ -91,7 +91,7 @@ class WorkspaceTests(unittest.TestCase):
                     and len(group.findall("s:rect", ns)) == 2
                 ]
                 self.assertEqual(len(symbol), 1)
-                self.assertEqual(symbol[0].attrib.get("transform"), "translate(-7 0)")
+                self.assertEqual(symbol[0].attrib.get("transform"), "translate(-7 -7)")
                 self.assertEqual(len(symbol[0].findall("s:path", ns)), 1)
                 self.assertEqual(len(symbol[0].findall("s:rect", ns)), 2)
                 if name == "favicon.svg":
@@ -107,8 +107,8 @@ class WorkspaceTests(unittest.TestCase):
     def test_sidebar_uses_exact_vector_wordmark_instead_of_html_retyping(self):
         html = self.client.get("/app").text
         self.assertIn('class="brand brand-lockup"', html)
-        self.assertIn('/app/static/brand/wordmark.svg?v=5', html)
-        self.assertIn('/app/static/brand/mark.svg?v=5', html)
+        self.assertIn('/app/static/brand/wordmark.svg?v=6', html)
+        self.assertIn('/app/static/brand/mark.svg?v=6', html)
         self.assertNotIn('<span class="brand-text">', html)
         self.assertIn("КОНТРОЛЬ ГРАНТОВ И РАСХОДОВ", html)
         response = self.client.get("/app/static/brand/wordmark.svg")
@@ -129,34 +129,44 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn('width:56px', css)
         self.assertIn('font-size:9px', css)
         self.assertIn('grid-template-columns:286px', css)
-        self.assertIn('data-theme="dark"', css)
+        self.assertNotIn('data-theme="dark"', css)
 
-    def test_theme_switch_and_responsive_navigation(self):
+    def test_single_light_theme_and_responsive_navigation(self):
         html = self.client.get("/app").text
-        self.assertIn('id="theme-toggle"', html)
-        self.assertIn('aria-pressed="false"', html)
+        self.assertNotIn('id="theme-toggle"', html)
+        self.assertNotIn('smartruble-theme', html)
+        self.assertNotIn('/app/static/theme.js', html)
         self.assertIn('id="mobile-scrim"', html)
         self.assertIn('aria-controls="navigation"', html)
-        self.assertIn('/app/static/design.css', html)
-        self.assertIn('/app/static/theme.js', html)
-        self.assertIn('smartruble-theme', html)
-        for url, words in [
-            ("/app/static/design.css", ['data-theme="dark"', "--stat-good", "@media(max-width:680px)"]),
-            ("/app/static/theme.js", ["localStorage.setItem", "aria-pressed", "Тёмная тема"]),
-        ]:
-            response = self.client.get(url)
-            self.assertEqual(response.status_code, 200)
-            for word in words:
-                self.assertIn(word, response.text)
+        self.assertIn('/app/static/design.css?v=6', html)
         self.assertIn('class="nav-icon"', html)
+        css = self.client.get("/app/static/design.css").text
+        self.assertIn('color-scheme:light', css)
+        self.assertNotIn('color-scheme:dark', css)
+        self.assertNotIn('data-theme="dark"', css)
+        self.assertIn('--stat-good', css)
+        self.assertIn('@media(max-width:680px)', css)
+        self.assertEqual(self.client.get("/app/static/theme.js").status_code, 404)
 
-    def test_theme_is_shared_across_all_bookmarkable_pages(self):
+    def test_light_theme_on_all_bookmarkable_pages(self):
         for path in ["/app", "/app/estimates", "/app/receipts", "/app/history",
                      "/app/antifraud", "/app/economics"]:
             with self.subTest(path=path):
                 html = self.client.get(path).text
-                self.assertIn('/app/static/design.css', html)
-                self.assertIn('/app/static/theme.js', html)
+                self.assertIn('/app/static/design.css?v=6', html)
+                self.assertNotIn('/app/static/theme.js', html)
+
+    def test_lighter_vector_wordmark_filter(self):
+        response = self.client.get("/app/static/brand/wordmark.svg")
+        self.assertEqual(response.status_code, 200)
+        from xml.etree import ElementTree as ET
+        root = ET.fromstring(response.text)
+        ns = {"s": "http://www.w3.org/2000/svg"}
+        morphology = root.findall('.//s:feMorphology', ns)
+        self.assertEqual(len(morphology), 1)
+        self.assertEqual(morphology[0].attrib.get("operator"), "erode")
+        self.assertEqual(morphology[0].attrib.get("radius"), "1.5")
+        self.assertEqual(len(root.findall('.//s:text', ns)), 0)
 
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text

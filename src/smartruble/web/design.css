@@ -1,5 +1,5 @@
 /* СмартРубль AI · v0.3 Design System
-   Документные реестры, сдержанная палитра, доступность и две темы.
+   Документные реестры, сдержанная палитра и один выверенный светлый интерфейс.
    Подключать после styles.css. Новые цвета не меняют SVG-логотип. */
 
 :root{
@@ -23,9 +23,7 @@
   --action:#242323;
   --action-ink:#FFFFFF;
   --panel-shadow:0 1px 3px rgba(35,31,28,.035);
-  --switch-bg:#F5F2EE;
-  --switch-ink:#504C48;
-  --scrim:rgba(25,22,21,.4);
+    --scrim:rgba(25,22,21,.4);
   --table-head:#FAF8F5;
   --stat-good:#225F45;
   --stat-good-bg:#E9F4EC;
@@ -40,63 +38,8 @@
   --toast-ink:#FFFFFF;
 }
 
-:root[data-theme="dark"]{
-  color-scheme:dark;
-  --bg:#161617;
-  --sidebar:#1D1D1E;
-  --border:#373536;
-  --ink:#E7E2DF;
-  --heading:#F4F1EF;
-  --muted:#B1A8A2;
-  --accent:#EC6366;
-  --accent-soft:#3B2427;
-  --accent-line:#794548;
-  --green:#8BCFA6;
-  --green-soft:#20382B;
-  --red:#EF9DA6;
-  --red-soft:#44292F;
-  --amber:#E4C08A;
-  --amber-soft:#463827;
-  --page:#161617;
-  --sheet:#242426;
-  --sheet-subtle:#29292A;
-  --rail:#1D1D1E;
-  --header:#202021;
-  --text:#E7E2DF;
-  --title:#FAF8F6;
-  --quiet:#C6BEB8;
-  --faint:#AAA098;
-  --hairline:#414042;
-  --hairline-soft:#363437;
-  --field:#2A292A;
-  --field-line:#565050;
-  --field-focus:rgba(236,99,102,.15);
-  --hover:#302E2E;
-  --selected:#3B2427;
-  --selected-ink:#FFAAA7;
-  --action:#EFE8E3;
-  --action-ink:#242124;
-  --panel-shadow:none;
-  --switch-bg:#302E2E;
-  --switch-ink:#E7DFD9;
-  --scrim:rgba(0,0,0,.62);
-  --table-head:#2B292A;
-  --stat-good:#99DCB6;
-  --stat-good-bg:#234233;
-  --stat-warn:#F2D39A;
-  --stat-warn-bg:#493B26;
-  --stat-danger:#FFA8B0;
-  --stat-danger-bg:#472B32;
-  --notice-bg:#302C29;
-  --notice-border:#50463E;
-  --notice-ink:#E2D5C9;
-  --toast-bg:#F1EBE6;
-  --toast-ink:#252222;
-}
-
 /* Page architecture */
 html{background:var(--page);color-scheme:light}
-html[data-theme="dark"]{background:var(--page);color-scheme:dark}
 body{background:var(--page);color:var(--text);font-size:13.5px}
 .sidebar{background:var(--rail);border-color:var(--hairline)}
 .shell{grid-template-columns:254px minmax(0,1fr)}
@@ -143,15 +86,6 @@ nav a[aria-current=page] .nav-icon{stroke-width:1.8}
 /* Top right actions */
 .topbar-right{gap:10px}
 .topbar select{background:var(--field);border-color:var(--field-line);color:var(--text);min-width:130px}
-.theme-switch{
-  display:inline-flex;align-items:center;gap:8px;justify-content:center;
-  border:1px solid var(--hairline);border-radius:7px;
-  background:var(--switch-bg);color:var(--switch-ink);
-  font-size:11.6px;font-weight:600;min-height:35px;padding:6px 11px;
-  white-space:nowrap;cursor:pointer;
-}
-.theme-switch:hover{border-color:var(--accent-line);background:var(--hover)}
-.theme-glyph{font-size:19px;line-height:1;width:18px;text-align:center}
 .demo-label{color:var(--quiet);background:var(--sheet-subtle);border-color:var(--hairline);border-radius:6px}
 
 /* Document sheets and data registers */
@@ -236,8 +170,6 @@ tbody tr:hover{background:var(--hover)}
   .topbar{padding:8px 13px;gap:7px;flex-wrap:nowrap}
   .topbar-right{gap:6px}
   .topbar select{min-width:95px;max-width:144px}
-  .theme-switch{min-width:36px;min-height:36px;padding:7px}
-  .theme-switch #theme-label{display:none}
   .grant-label{display:none}
   .content{padding:23px 13px 42px}
   .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
