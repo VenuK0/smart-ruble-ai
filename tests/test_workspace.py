@@ -168,6 +168,39 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(morphology[0].attrib.get("radius"), "1.5")
         self.assertEqual(len(root.findall('.//s:text', ns)), 0)
 
+    def test_financial_workbench_assets_and_safe_exports(self):
+        for url in ["/app", "/app/estimates", "/app/receipts", "/app/history"]:
+            with self.subTest(url=url):
+                page = self.client.get(url).text
+                self.assertIn("/app/static/workspace.css?v=1", page)
+                self.assertIn("/app/static/export.js?v=1", page)
+                self.assertIn("/app/static/app.js?v=7", page)
+        css = self.client.get("/app/static/workspace.css")
+        self.assertEqual(css.status_code, 200)
+        self.assertIn(".welcome-panel", css.text)
+        self.assertIn(".usage-meter", css.text)
+        self.assertIn(".budget-summary", css.text)
+        exporter = self.client.get("/app/static/export.js")
+        self.assertEqual(exporter.status_code, 200)
+        self.assertIn("SRCSV", exporter.text)
+        self.assertIn("csv;charset=utf-8", exporter.text)
+
+    def test_workbench_has_a_real_ledger_and_practical_workflows(self):
+        script = self.client.get("/app/static/app.js").text
+        for item in [
+            "Начните с создания сметы",
+            "Создать первую смету",
+            "estimate-search",
+            "estimate-export",
+            "history-export",
+            "receipt-total",
+            "window.SRCSV.download",
+            "choose-grant",
+            "progressbar",
+        ]:
+            with self.subTest(item=item):
+                self.assertIn(item, script)
+
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
         self.assertIn("#FBF7F1", css)

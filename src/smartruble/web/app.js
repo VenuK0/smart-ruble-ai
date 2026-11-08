@@ -63,47 +63,142 @@
     if(shouldRender!==false)render();
   }
   function metaCard(title,val,note){return '<div class="metric"><div class="metric-label">'+title+'</div><div class="metric-value">'+val+'</div><div class="metric-foot">'+note+'</div></div>';}
+  function percent(spent,limit){
+    return limit>0?Math.max(0,Math.min(100,100*spent/limit)):0;
+  }
+  function progress(spent,limit){
+    var p=percent(spent,limit);
+    return '<div class="usage-meter" role="progressbar" aria-label="Освоение лимита" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.round(p)+'">'+
+      '<span class="usage-fill'+(p>=90?' high':p>=75?' medium':'')+'" style="width:'+p.toFixed(2)+'%"></span></div>';
+  }
+  function ledgerRows(items){
+    return items.map(function(x){
+      var limit=sum(x.limits),spent=sum(x.spent);
+      return tr([
+        '<span class="ledger-name">'+esc(x.grant_id)+'</span>'+(x.grant_id===active?'<span class="ledger-active">Активная</span>':''),
+        cash(limit),cash(spent),
+        '<span class="ledger-balance">'+cash(Math.max(0,limit-spent))+'</span>'+progress(spent,limit),
+        '<button class="btn secondary btn-sm choose-grant" type="button" data-id="'+esc(x.grant_id)+'" aria-label="Выбрать смету '+esc(x.grant_id)+'">Выбрать</button>'
+      ]);
+    });
+  }
+  function bindGrantButtons(){
+    Array.from(root.querySelectorAll(".choose-grant")).forEach(function(btn){
+      btn.onclick=function(){
+        active=btn.dataset.id;
+        sessionStorage.setItem("sr-active-grant",active);
+        paintGrantSelect();
+        render();
+        toast("Активная смета: "+active);
+      };
+    });
+  }
   function showOverview(){
-    var c=current();
     var budget=contracts.reduce(function(t,x){return t+sum(x.limits);},0);
     var spent=contracts.reduce(function(t,x){return t+sum(x.spent);},0);
-    root.innerHTML=section("Обзор","Состояние смет, расходы и операции, требующие внимания.",link("receipts","Проверить чек")+'<a class="btn primary" href="/app/estimates">Новая смета</a>')+
-      notice()+'<div class="metric-grid">'+
-      metaCard("Смет в системе",number(contracts.length),"Создано в текущем сеансе сервера")+
-      metaCard("Общий лимит",cash(budget),"По всем сметам")+
-      metaCard("Одобрено",cash(spent),"Условные операции")+
-      metaCard("Доступно",cash(budget-spent),"Остаток лимитов")+'</div>'+
-      '<div class="columns wide-first">'+
-      panel("Сметы",table(["Идентификатор",{title:"Лимит",num:true},{title:"Одобрено",num:true},"Чеков"],contracts.map(function(x){return tr(['<span class="emphasis">'+esc(x.grant_id)+'</span>','<span class="number">'+cash(sum(x.limits))+'</span>','<span class="number">'+cash(sum(x.spent))+'</span>',number(x.transactions)]);}),"Пока нет созданных смет"),'<a href="/app/estimates" class="tiny-action">Все сметы</a>')+
-      panel("Быстрые действия",'<div class="panel-body"><div class="grid-list"><a href="/app/estimates">Создать смету<span>›</span></a><a href="/app/receipts">Проверить покупку<span>›</span></a><a href="/app/history">Посмотреть историю<span>›</span></a><a href="/app/antifraud">Проверить аномалии<span>›</span></a></div></div>')+
-      '</div>';
+    var checks=contracts.reduce(function(t,x){return t+Number(x.transactions||0);},0);
+    var estimate=current();
+    root.innerHTML=section("Рабочий стол","Обзор смет и контроль расходования средств в одном месте.",
+      '<a class="btn secondary" href="/app/receipts">Проверить чек</a><a class="btn primary" href="/app/estimates">Создать смету</a>')+
+      '<div class="workspace-disclaimer"><span class="disclaimer-dot"></span><span><strong>Демонстрационный режим</strong> · Только синтетические операции. Сметы и история находятся в памяти сервера и сбрасываются при перезапуске.</span></div>'+
+      (contracts.length===0?
+        '<section class="panel welcome-panel"><div class="welcome-content"><div class="eyebrow">НАЧАЛО РАБОТЫ</div>'+
+        '<h2>Начните с создания сметы</h2><p>Проверка чеков работает относительно установленных статей и лимитов. Последовательно выполните три действия.</p>'+
+        '<div class="step-list"><a href="/app/estimates"><b>01</b><span><strong>Создайте смету</strong><small>Укажите допустимые статьи и суммы</small></span><span class="step-arrow">›</span></a>'+
+        '<a href="/app/receipts"><b>02</b><span><strong>Проверьте чек</strong><small>Добавьте товары для условной проверки</small></span><span class="step-arrow">›</span></a>'+
+        '<a href="/app/history"><b>03</b><span><strong>Посмотрите журнал</strong><small>Разберитесь, почему принято решение</small></span><span class="step-arrow">›</span></a></div>'+
+        '<a href="/app/estimates" class="btn primary">Создать первую смету</a></div></section>'
+      :'<div class="metric-grid">'+
+        metaCard("Сметы",number(contracts.length),"В текущем сеансе сервера")+
+        metaCard("Лимит",cash(budget),"Всего по сметам")+
+        metaCard("Условно одобрено",cash(spent),"По обработанным чекам")+
+        metaCard("Остаток",cash(Math.max(0,budget-spent)),"Обработано чеков: "+number(checks))+
+        '</div><div class="columns wide-first">'+
+        panel("Реестр смет",table(["Смета",{title:"Лимит",num:true},{title:"Одобрено",num:true},{title:"Остаток",num:true},""],ledgerRows(contracts)),
+        '<a href="/app/estimates" class="tiny-action">Открыть реестр</a>')+
+        panel("Активная смета",estimate?
+        '<div class="panel-body"><div class="chosen-grant">'+esc(estimate.grant_id)+'</div>'+
+        '<div class="overview-budget"><span>Освоено</span><strong>'+cash(sum(estimate.spent))+' / '+cash(sum(estimate.limits))+'</strong></div>'+
+        progress(sum(estimate.spent),sum(estimate.limits))+
+        '<div class="overview-shortcuts"><a class="btn primary" href="/app/receipts">Проверить чек</a><a class="btn secondary" href="/app/estimates">Статьи сметы</a><a class="btn secondary" href="/app/history">Журнал</a></div></div>'
+        :grantNeeded())+
+        '</div>');
+    bindGrantButtons();
   }
   function showEstimates(){
-    root.innerHTML=section("Сметы и лимиты","Создание и просмотр условий целевого расходования средств.")+
+    root.innerHTML=section("Сметы и лимиты","Реестр смет, остатки средств и статьи расходов.")+
       '<div class="columns wide-first">'+
-      panel("Реестр смет",table(["Идентификатор",{title:"Лимит",num:true},{title:"Израсходовано",num:true},{title:"Остаток",num:true},"Чеков"],contracts.map(function(c){return tr(['<strong>'+esc(c.grant_id)+'</strong>',cash(sum(c.limits)),cash(sum(c.spent)),cash(sum(c.limits)-sum(c.spent)),number(c.transactions)]);}),"Сметы ещё не созданы"))+
-      panel("Новая смета",'<div class="panel-body"><form id="estimate-form">'+field("grant-name","Идентификатор сметы","грант-2026")+
-      '<div class="field" style="margin-top:15px"><label for="estimate-text">Статьи расходов</label><textarea id="estimate-text" rows="6">Расходные материалы — 50 000 ₽\nОборудование — 120 000 ₽\nУслуги хостинга — 10 000 ₽</textarea><div class="field-help">По одной статье и сумме в каждой строке. Нераспознанные строки нужно проверить вручную.</div></div>'+
-      '<div class="form-actions"><button class="btn primary" type="submit">Создать смету</button><button class="btn secondary" type="button" id="new-example">Пример</button></div>'+formMessage("estimate-msg")+'</form></div>')+
-      '</div><div class="stack" id="estimate-details" style="margin-top:18px"></div>';
+      panel("Реестр смет",'<div class="toolbar register-toolbar"><div class="left">'+
+        '<label class="sr-only" for="estimate-search">Поиск сметы</label>'+
+        '<input class="input" id="estimate-search" placeholder="Найти смету по номеру" autocomplete="off">'+
+        '</div><div class="right"><span class="registry-count" id="estimate-count"></span>'+
+        '<button class="btn secondary btn-sm" id="estimate-export" type="button"'+(contracts.length?'':' disabled')+'>Экспорт CSV</button></div></div>'+
+        '<div id="estimate-table"></div>')+
+      panel("Создание сметы",'<div class="panel-body"><form id="estimate-form">'+
+        field("grant-name","Номер / идентификатор","грант-2026")+
+        '<div class="field with-top-gap"><label for="estimate-text">Статьи и лимиты</label>'+
+        '<textarea id="estimate-text" rows="7" maxlength="30000" required>Расходные материалы — 50 000 ₽\nОборудование — 120 000 ₽\nУслуги хостинга — 10 000 ₽</textarea>'+
+        '<div class="field-help">Каждая статья — на отдельной строке. Нераспознанные записи требуют ручной проверки.</div></div>'+
+        '<div class="form-actions"><button class="btn primary" type="submit">Создать смету</button>'+
+        '<button class="btn secondary" type="button" id="new-example">Заполнить пример</button></div>'+
+        formMessage("estimate-msg")+'</form></div>')+
+      '</div><div class="stack detail-stack" id="estimate-details"></div>';
+    function paintList(){
+      var q=$("estimate-search").value.trim().toLocaleLowerCase("ru-RU");
+      var filtered=contracts.filter(function(x){return x.grant_id.toLocaleLowerCase("ru-RU").includes(q);});
+      $("estimate-table").innerHTML=table(["Смета",{title:"Лимит",num:true},{title:"Одобрено",num:true},{title:"Остаток",num:true},""],ledgerRows(filtered),
+        "Сметы не найдены. Измените поисковый запрос или создайте новую смету.");
+      $("estimate-count").textContent="Смет: "+filtered.length;
+      bindGrantButtons();
+    }
+    $("estimate-search").addEventListener("input",paintList);
+    paintList();
+    $("estimate-export").onclick=function(){
+      var q=$("estimate-search").value.trim().toLocaleLowerCase("ru-RU");
+      var filtered=contracts.filter(function(x){return x.grant_id.toLocaleLowerCase("ru-RU").includes(q);});
+      if(!filtered.length){toast("Нет смет для выгрузки",true);return;}
+      window.SRCSV.download("smartruble-estimates.csv",
+        ["Смета","Лимит, ₽","Одобрено, ₽","Остаток, ₽","Обработано чеков"],
+        filtered.map(function(x){var limit=sum(x.limits),spent=sum(x.spent);return [x.grant_id,limit,spent,Math.max(0,limit-spent),x.transactions];}));
+    };
     $("estimate-form").onsubmit=async function(e){
       e.preventDefault();
       var id=$("grant-name").value.trim();
-      if(!id){say("estimate-msg","Введите идентификатор",true);return;}
+      if(!id){say("estimate-msg","Введите номер сметы",true);return;}
+      var button=$("estimate-form").querySelector("button[type=submit]");
+      button.disabled=true;
       try{
         var x=await api("/contracts","POST",{grant_id:id,text:$("estimate-text").value});
-        active=x.grant_id;sessionStorage.setItem("sr-active-grant",active);
-        await reloadContracts();toast(x.unparsed.length?"Смета создана. Не распознано строк: "+x.unparsed.length:"Смета создана");
-      }catch(e){say("estimate-msg",e.message,true);}
+        active=x.grant_id;
+        sessionStorage.setItem("sr-active-grant",active);
+        await reloadContracts();
+        toast(x.unparsed.length?"Смета создана. Требуют проверки строк: "+x.unparsed.length:"Смета создана");
+      }catch(err){say("estimate-msg",err.message,true);}
+      finally{button.disabled=false;}
     };
     $("new-example").onclick=function(){
       $("grant-name").value="грант-"+Date.now().toString().slice(-6);
       $("estimate-text").value="Расходные материалы — 50 000 ₽\nОборудование — 120 000 ₽\nУслуги хостинга — 10 000 ₽";
     };
-    var c=current();
-    if(c){
-      var rows=Object.keys(c.limits).map(function(cat){return tr([esc(labels[cat]||cat),cash(c.limits[cat]),cash(c.spent[cat]||0),cash(c.limits[cat]-(c.spent[cat]||0))]);});
-      $("estimate-details").innerHTML=panel("Статьи активной сметы: "+esc(c.grant_id),table(["Статья",{title:"Лимит",num:true},{title:"Одобрено",num:true},{title:"Остаток",num:true}],rows));
+    var estimate=current();
+    if(estimate){
+      var total=sum(estimate.limits),spent=sum(estimate.spent);
+      var rows=Object.keys(estimate.limits).map(function(cat){
+        var limit=Number(estimate.limits[cat]),used=Number(estimate.spent[cat]||0);
+        return tr([
+          '<strong>'+esc(labels[cat]||cat)+'</strong>',
+          cash(limit),cash(used),
+          '<span class="ledger-balance">'+cash(Math.max(0,limit-used))+'</span>'+progress(used,limit)
+        ]);
+      });
+      $("estimate-details").innerHTML=panel("Статьи сметы · "+esc(estimate.grant_id),
+        '<div class="budget-summary"><div><span>Общий лимит</span><strong>'+cash(total)+'</strong></div>'+
+          '<div><span>Условно одобрено</span><strong>'+cash(spent)+'</strong></div>'+
+          '<div><span>Осталось</span><strong>'+cash(Math.max(0,total-spent))+'</strong></div>'+
+        '</div>'+
+        table(["Статья",{title:"Лимит",num:true},{title:"Одобрено",num:true},{title:"Остаток и освоение",num:true}],rows));
+    }else{
+      $("estimate-details").innerHTML="";
     }
   }
   var demoItems=[{name:"Микроконтроллер Arduino Uno R3",qty:1,price:2500},{name:"Шоколад Аленка молочный",qty:1,price:240}];
@@ -123,18 +218,30 @@
         '<div class="sep"></div><h3 style="margin-bottom:12px">Состав покупки</h3>'+
         '<div class="receipt-row receipt-columns"><span>Наименование</span><span>Количество</span><span>Цена, ₽</span><span></span></div>'+
         '<div id="receipt-lines">'+demoItems.map(receiptRow).join("")+'</div>'+
-        '<div class="form-actions"><button class="btn secondary btn-sm" type="button" id="add-item">+ Добавить позицию</button></div>'+
+        '<div class="form-actions receipt-actions"><button class="btn secondary btn-sm" type="button" id="add-item">+ Добавить позицию</button><div class="receipt-total">Сумма чека <strong id="receipt-total">0 ₽</strong></div></div>'+
         '<div class="sep"></div><div class="form-actions"><button class="btn primary" type="submit">Проверить чек</button><button class="btn secondary" type="button" id="receipt-example">Заполнить пример</button></div>'+
         formMessage("receipt-msg")+'</form></div>')+
       panel("Результат проверки",'<div id="receipt-result">'+empty("Результат ещё не получен","После проверки здесь появятся решения по каждой позиции.")+'</div>')+
       '</div>');
     if(!current())return;
-    $("add-item").onclick=function(){$("receipt-lines").insertAdjacentHTML("beforeend",receiptRow({qty:1}));};
-    $("receipt-example").onclick=function(){$("merchant").value="ООО Электроника";$("receipt-lines").innerHTML=demoItems.map(receiptRow).join("");};
+    function refreshReceiptTotal(){
+      var total=0;
+      Array.from($("receipt-lines").querySelectorAll(".receipt-row")).forEach(function(row){
+        var qty=Number(row.querySelector(".item-qty").value);
+        var price=Number(row.querySelector(".item-price").value);
+        if(Number.isFinite(qty)&&Number.isFinite(price)&&qty>0&&price>0)total+=qty*price;
+      });
+      $("receipt-total").textContent=cash(total);
+    }
+    $("receipt-lines").addEventListener("input",refreshReceiptTotal);
+    $("add-item").onclick=function(){$("receipt-lines").insertAdjacentHTML("beforeend",receiptRow({qty:1}));refreshReceiptTotal();};
+    $("receipt-example").onclick=function(){$("merchant").value="ООО Электроника";$("receipt-lines").innerHTML=demoItems.map(receiptRow).join("");refreshReceiptTotal();};
+    refreshReceiptTotal();
     $("receipt-lines").onclick=function(e){
       var btn=e.target.closest(".remove-item");if(!btn)return;
       if($("receipt-lines").querySelectorAll(".receipt-row").length<=1){toast("В чеке должна остаться хотя бы одна позиция",true);return;}
       btn.closest(".receipt-row").remove();
+      refreshReceiptTotal();
     };
     $("receipt-form").onsubmit=async function(e){
       e.preventDefault();
@@ -163,10 +270,11 @@
     try{return new Date(timestamp*1000).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(_){return "—";}
   }
   async function showHistory(){
-    root.innerHTML=section("История операций","Проверенные чеки, причины решений и контроль целостности журнала.")+
-      (!current()?grantNeeded():panel("Операции по смете: "+esc(active),'<div class="toolbar"><div class="left"><input id="history-search" class="input" placeholder="Поиск по чеку или продавцу" aria-label="Поиск по чеку или продавцу"><select id="history-status" aria-label="Фильтр по результату"><option value="">Все решения</option><option value="APPROVED">Одобрено</option><option value="NEEDS_REVIEW">На проверке</option><option value="PARTIAL">Частично</option></select></div><div class="right"><span id="audit-state" class="status muted">Проверка журнала…</span><button id="history-reload" class="btn secondary btn-sm">Обновить</button></div></div><div id="history-table">'+empty("Загрузка","Получаем историю операций.")+'</div><div id="history-count" class="filter-result"></div>'));
+    root.innerHTML=section("История операций","Последние 100 проверенных чеков, результаты операций и контроль целостности журнала.")+
+      (!current()?grantNeeded():panel("Операции по смете: "+esc(active),'<div class="toolbar"><div class="left"><input id="history-search" class="input" placeholder="Поиск по чеку или продавцу" aria-label="Поиск по чеку или продавцу"><select id="history-status" aria-label="Фильтр по результату"><option value="">Все решения</option><option value="APPROVED">Одобрено</option><option value="NEEDS_REVIEW">На проверке</option><option value="PARTIAL">Частично</option></select></div><div class="right"><span id="audit-state" class="status muted">Проверка журнала…</span><button id="history-export" class="btn secondary btn-sm" type="button" disabled>Экспорт CSV</button><button id="history-reload" class="btn secondary btn-sm" type="button">Обновить</button></div></div><div id="history-table">'+empty("Загрузка","Получаем историю операций.")+'</div><div id="history-count" class="filter-result"></div>'));
     if(!current())return;
     var entries=[];
+    var matched=[];
     function display(){
       var q=$("history-search").value.toLowerCase().trim();
       var filter=$("history-status").value;
@@ -174,6 +282,8 @@
         var r=e.record;
         return (!filter||r.status===filter)&&(!q||txt(r.receipt_id).toLowerCase().includes(q)||txt(r.merchant).toLowerCase().includes(q));
       });
+      matched=subset;
+      $("history-export").disabled=!matched.length;
       var rows=subset.map(function(e){var r=e.record;return tr([dateLabel(e.ts),'<strong>'+esc(r.receipt_id)+'</strong>',esc(r.merchant),badge(r.status),cash(r.approved),cash(r.review),cash(r.personal_pay)]);});
       $("history-table").innerHTML=table(["Дата","Чек","Продавец","Результат",{title:"Одобрено",num:true},{title:"Проверка",num:true},{title:"Отклонено",num:true}],rows,"Подходящих операций нет");
       $("history-count").textContent="Показано записей: "+subset.length+" из "+entries.length;
@@ -187,7 +297,16 @@
         display();
       }catch(err){$("history-table").innerHTML=empty("Не удалось загрузить историю",esc(err.message));}
     }
-    $("history-search").oninput=display;$("history-status").onchange=display;$("history-reload").onclick=load;
+    $("history-search").oninput=display;
+    $("history-status").onchange=display;
+    $("history-reload").onclick=load;
+    $("history-export").onclick=function(){
+      if(!matched.length){toast("Нет операций для выгрузки",true);return;}
+      window.SRCSV.download("smartruble-operations.csv",
+        ["Дата","Смета","Номер чека","Продавец","Результат","Одобрено, ₽","На проверке, ₽","Отклонено, ₽"],
+        matched.map(function(e){var x=e.record;return [dateLabel(e.ts),active,x.receipt_id,x.merchant,
+          statusTitle[x.status]||x.status,x.approved,x.review,x.personal_pay];}));
+    };
     await load();
   }
   function showAntifraud(){
