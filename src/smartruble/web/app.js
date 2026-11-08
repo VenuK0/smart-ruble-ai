@@ -258,11 +258,21 @@
     if(active)sessionStorage.setItem("sr-active-grant",active);else sessionStorage.removeItem("sr-active-grant");
     render();
   });
+  function closeMobileMenu(){
+    document.body.classList.remove("menu-open");
+    $("menu-toggle").setAttribute("aria-expanded","false");
+    $("menu-toggle").setAttribute("aria-label","Открыть меню");
+    $("mobile-scrim").hidden=true;
+  }
   $("menu-toggle").onclick=function(){
     var shown=document.body.classList.toggle("menu-open");
     $("menu-toggle").setAttribute("aria-expanded",shown?"true":"false");
+    $("menu-toggle").setAttribute("aria-label",shown?"Закрыть меню":"Открыть меню");
+    $("mobile-scrim").hidden=!shown;
   };
-  document.addEventListener("keydown",function(e){if(e.key==="Escape")document.body.classList.remove("menu-open");});
+  $("mobile-scrim").onclick=closeMobileMenu;
+  document.addEventListener("keydown",function(e){if(e.key==="Escape")closeMobileMenu();});
+  window.addEventListener("resize",function(){if(window.innerWidth>960)closeMobileMenu();});
   reloadContracts().catch(function(err){root.innerHTML=section("Ошибка подключения","Не удалось получить сведения о сметах.")+
     '<div class="notice">'+esc(err.message)+'. Убедитесь, что сервер запущен.</div>';
     toast("Сервер недоступен",true);
