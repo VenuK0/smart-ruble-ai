@@ -261,3 +261,80 @@ tbody tr:hover{background:var(--hover)}
 @media(prefers-reduced-motion:reduce){
   nav a,.btn{transition:none}
 }
+
+
+/* Responsive brand lockup: a dedicated small-size master built from the
+   SAME outlined Cyrillic glyphs as logo.svg. Never retype or scale down the
+   full horizontal banner into a 44px thumbnail. */
+.shell{grid-template-columns:286px minmax(0,1fr)}
+.sidebar{padding:21px 16px 18px}
+.brand.brand-lockup{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:9px;
+  width:100%;
+  min-width:0;
+  min-height:79px;
+  padding:11px 8px;
+  margin-bottom:10px;
+  border-radius:9px;
+  border:1px solid rgba(25,25,25,.06);
+  background:#FBF7F1;
+  text-decoration:none;
+  box-shadow:0 1px 2px rgba(25,25,25,.025);
+}
+.brand.brand-lockup:hover{background:#FBF7F1; text-decoration:none}
+.brand.brand-lockup .brand-mark{
+  box-sizing:border-box;
+  display:block;
+  flex:0 0 56px;
+  width:56px;
+  height:56px;
+  min-width:56px;
+  padding:0;
+  margin:0;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  object-fit:contain;
+}
+.brand-copy{
+  display:flex;
+  flex:1 1 auto;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+  gap:7px;
+  min-width:0;
+  max-width:calc(100% - 65px);
+}
+.brand-wordmark{
+  display:block;
+  width:100%;
+  max-width:174px;
+  height:auto;
+  aspect-ratio:658 / 77;
+  object-fit:contain;
+  object-position:left center;
+}
+.brand-subtitle{
+  display:block;
+  width:100%;
+  overflow:hidden;
+  color:#69625D!important;
+  font-family:"Segoe UI",Arial,sans-serif;
+  font-weight:600;
+  font-size:9px;
+  line-height:1.28;
+  letter-spacing:.18px;
+  white-space:nowrap;
+  text-overflow:clip;
+}
+@media(max-width:960px){
+  .shell{grid-template-columns:minmax(0,1fr)}
+  .sidebar{width:286px}
+}
+@media(max-width:355px){
+  .sidebar{width:min(286px,calc(100vw - 24px))}
+}
