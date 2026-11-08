@@ -240,7 +240,7 @@
     };
   }
   function render(){
-    document.title=(ROUTES[PAGE]||"Обзор")+" — SmartRubleAI";
+    document.title=(ROUTES[PAGE]||"Обзор")+" — СмартРубль AI";
     Array.from(document.querySelectorAll("#navigation a")).forEach(function(a){
       if(a.dataset.page===(PAGE==="overview"?"overview":PAGE))a.setAttribute("aria-current","page");
       else a.removeAttribute("aria-current");
