@@ -49,5 +49,31 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(self.client.get("/demo").status_code, 200)
 
 
+    def test_russian_brand_and_favicon(self):
+        html = self.client.get("/app").text
+        self.assertIn("СмартРубль", html)
+        self.assertIn("Контроль грантов и расходов", html)
+        self.assertIn('/app/static/brand/mark.svg', html)
+        self.assertIn('/app/static/brand/favicon.svg', html)
+        self.assertIn('application-name" content="SmartRubleAI', html)
+
+    def test_vector_brand_assets(self):
+        from xml.etree import ElementTree
+        for name in ("mark.svg", "favicon.svg", "logo.svg"):
+            with self.subTest(name=name):
+                response = self.client.get("/app/static/brand/" + name)
+                self.assertEqual(response.status_code, 200)
+                root = ElementTree.fromstring(response.text)
+                self.assertTrue(root.tag.endswith("svg"))
+                self.assertIn("#BB080B", response.text)
+        self.assertIn("Контроль грантов и расходов",
+                      self.client.get("/app/static/brand/logo.svg").text)
+
+    def test_selected_palette(self):
+        css = self.client.get("/app/static/styles.css").text
+        self.assertIn("#F0EDE8", css)
+        self.assertIn("#BB080B", css)
+        self.assertIn("#191919", css)
+
 if __name__ == "__main__":
     unittest.main()
