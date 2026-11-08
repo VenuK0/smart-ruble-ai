@@ -7,20 +7,18 @@
   <meta name="description" content="СмартРубль AI — контроль грантов и расходов. Исследовательский прототип.">
   <meta name="application-name" content="SmartRubleAI">
   <title>СмартРубль AI — Контроль грантов и расходов</title>
-  <link rel="icon" type="image/svg+xml" href="/app/static/brand/favicon.svg?v=4">
-  <script>try{document.documentElement.dataset.theme=localStorage.getItem("smartruble-theme")==="dark"?"dark":"light";}catch(e){document.documentElement.dataset.theme="light";}</script>
+  <link rel="icon" type="image/svg+xml" href="/app/static/brand/favicon.svg?v=6">
   <link rel="stylesheet" href="/app/static/styles.css">
-  <link rel="stylesheet" href="/app/static/design.css">
-  <script src="/app/static/theme.js" defer></script>
+  <link rel="stylesheet" href="/app/static/design.css?v=6">
   <script src="/app/static/app.js" defer></script>
 </head>
 <body>
   <div class="shell">
     <aside class="sidebar" aria-label="Боковое меню">
       <a class="brand brand-lockup" href="/app" aria-label="СмартРубль AI — Контроль грантов и расходов. Главная">
-        <img class="brand-mark" src="/app/static/brand/mark.svg?v=5" width="56" height="56" alt="" aria-hidden="true">
+        <img class="brand-mark" src="/app/static/brand/mark.svg?v=6" width="56" height="56" alt="" aria-hidden="true">
         <span class="brand-copy">
-          <img class="brand-wordmark" src="/app/static/brand/wordmark.svg?v=5" width="174" height="21" alt="" aria-hidden="true">
+          <img class="brand-wordmark" src="/app/static/brand/wordmark.svg?v=6" width="174" height="21" alt="" aria-hidden="true">
           <span class="brand-subtitle">КОНТРОЛЬ ГРАНТОВ И РАСХОДОВ</span>
         </span>
       </a>
@@ -48,7 +46,6 @@
         <div class="topbar-right">
           <label for="active-grant" class="grant-label">Активная смета</label>
           <select id="active-grant" aria-label="Активная смета"><option value="">Не выбрана</option></select>
-          <button type="button" class="theme-switch" id="theme-toggle" aria-label="Переключить тему" aria-pressed="false"><span class="theme-glyph" id="theme-glyph" aria-hidden="true">☾</span><span id="theme-label">Тёмная тема</span></button>
           <span class="demo-label" title="Операции демонстрационные, без подключения к платёжным системам">Демо</span>
         </div>
       </header>
