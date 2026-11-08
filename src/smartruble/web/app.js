@@ -63,20 +63,67 @@
     if(shouldRender!==false)render();
   }
   function metaCard(title,val,note){return '<div class="metric"><div class="metric-label">'+title+'</div><div class="metric-value">'+val+'</div><div class="metric-foot">'+note+'</div></div>';}
+  function percent(spent,limit){
+    return limit>0?Math.max(0,Math.min(100,100*spent/limit)):0;
+  }
+  function progress(spent,limit){
+    var p=percent(spent,limit);
+    return '<div class="usage-meter" role="progressbar" aria-label="Освоение лимита" aria-valuemin="0" aria-valuemax="100" aria-valuenow="'+Math.round(p)+'">'+
+      '<span class="usage-fill'+(p>=90?' high':p>=75?' medium':'')+'" style="width:'+p.toFixed(2)+'%"></span></div>';
+  }
+  function ledgerRows(items){
+    return items.map(function(x){
+      var limit=sum(x.limits),spent=sum(x.spent);
+      return tr([
+        '<span class="ledger-name">'+esc(x.grant_id)+'</span>'+(x.grant_id===active?'<span class="ledger-active">Активная</span>':''),
+        cash(limit),cash(spent),
+        '<span class="ledger-balance">'+cash(Math.max(0,limit-spent))+'</span>'+progress(spent,limit),
+        '<button class="btn secondary btn-sm choose-grant" type="button" data-id="'+esc(x.grant_id)+'" aria-label="Выбрать смету '+esc(x.grant_id)+'">Выбрать</button>'
+      ]);
+    });
+  }
+  function bindGrantButtons(){
+    Array.from(root.querySelectorAll(".choose-grant")).forEach(function(btn){
+      btn.onclick=function(){
+        active=btn.dataset.id;
+        sessionStorage.setItem("sr-active-grant",active);
+        paintGrantSelect();
+        render();
+        toast("Активная смета: "+active);
+      };
+    });
+  }
   function showOverview(){
-    var c=current();
     var budget=contracts.reduce(function(t,x){return t+sum(x.limits);},0);
     var spent=contracts.reduce(function(t,x){return t+sum(x.spent);},0);
-    root.innerHTML=section("Обзор","Состояние смет, расходы и операции, требующие внимания.",link("receipts","Проверить чек")+'<a class="btn primary" href="/app/estimates">Новая смета</a>')+
-      notice()+'<div class="metric-grid">'+
-      metaCard("Смет в системе",number(contracts.length),"Создано в текущем сеансе сервера")+
-      metaCard("Общий лимит",cash(budget),"По всем сметам")+
-      metaCard("Одобрено",cash(spent),"Условные операции")+
-      metaCard("Доступно",cash(budget-spent),"Остаток лимитов")+'</div>'+
-      '<div class="columns wide-first">'+
-      panel("Сметы",table(["Идентификатор",{title:"Лимит",num:true},{title:"Одобрено",num:true},"Чеков"],contracts.map(function(x){return tr(['<span class="emphasis">'+esc(x.grant_id)+'</span>','<span class="number">'+cash(sum(x.limits))+'</span>','<span class="number">'+cash(sum(x.spent))+'</span>',number(x.transactions)]);}),"Пока нет созданных смет"),'<a href="/app/estimates" class="tiny-action">Все сметы</a>')+
-      panel("Быстрые действия",'<div class="panel-body"><div class="grid-list"><a href="/app/estimates">Создать смету<span>›</span></a><a href="/app/receipts">Проверить покупку<span>›</span></a><a href="/app/history">Посмотреть историю<span>›</span></a><a href="/app/antifraud">Проверить аномалии<span>›</span></a></div></div>')+
-      '</div>';
+    var checks=contracts.reduce(function(t,x){return t+Number(x.transactions||0);},0);
+    var estimate=current();
+    root.innerHTML=section("Рабочий стол","Обзор смет и контроль расходования средств в одном месте.",
+      '<a class="btn secondary" href="/app/receipts">Проверить чек</a><a class="btn primary" href="/app/estimates">Создать смету</a>')+
+      '<div class="workspace-disclaimer"><span class="disclaimer-dot"></span><span><strong>Демонстрационный режим</strong> · Только синтетические операции. Сметы и история находятся в памяти сервера и сбрасываются при перезапуске.</span></div>'+
+      (contracts.length===0?
+        '<section class="panel welcome-panel"><div class="welcome-content"><div class="eyebrow">НАЧАЛО РАБОТЫ</div>'+
+        '<h2>Начните с создания сметы</h2><p>Проверка чеков работает относительно установленных статей и лимитов. Последовательно выполните три действия.</p>'+
+        '<div class="step-list"><a href="/app/estimates"><b>01</b><span><strong>Создайте смету</strong><small>Укажите допустимые статьи и суммы</small></span><span class="step-arrow">›</span></a>'+
+        '<a href="/app/receipts"><b>02</b><span><strong>Проверьте чек</strong><small>Добавьте товары для условной проверки</small></span><span class="step-arrow">›</span></a>'+
+        '<a href="/app/history"><b>03</b><span><strong>Посмотрите журнал</strong><small>Разберитесь, почему принято решение</small></span><span class="step-arrow">›</span></a></div>'+
+        '<a href="/app/estimates" class="btn primary">Создать первую смету</a></div></section>'
+      :'<div class="metric-grid">'+
+        metaCard("Сметы",number(contracts.length),"В текущем сеансе сервера")+
+        metaCard("Лимит",cash(budget),"Всего по сметам")+
+        metaCard("Условно одобрено",cash(spent),"По обработанным чекам")+
+        metaCard("Остаток",cash(Math.max(0,budget-spent)),"Обработано чеков: "+number(checks))+
+        '</div><div class="columns wide-first">'+
+        panel("Реестр смет",table(["Смета",{title:"Лимит",num:true},{title:"Одобрено",num:true},{title:"Остаток",num:true},""],ledgerRows(contracts)),
+        '<a href="/app/estimates" class="tiny-action">Открыть реестр</a>')+
+        panel("Активная смета",estimate?
+        '<div class="panel-body"><div class="chosen-grant">'+esc(estimate.grant_id)+'</div>'+
+        '<div class="overview-budget"><span>Освоено</span><strong>'+cash(sum(estimate.spent))+' / '+cash(sum(estimate.limits))+'</strong></div>'+
+        progress(sum(estimate.spent),sum(estimate.limits))+
+        '<div class="overview-shortcuts"><a class="btn primary" href="/app/receipts">Проверить чек</a><a class="btn secondary" href="/app/estimates">Статьи сметы</a><a class="btn secondary" href="/app/history">Журнал</a></div></div>'
+        :grantNeeded())+
+        '</div>');
+    bindGrantButtons();
   }
   function showEstimates(){
     root.innerHTML=section("Сметы и лимиты","Создание и просмотр условий целевого расходования средств.")+
