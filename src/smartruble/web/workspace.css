@@ -146,3 +146,8 @@ a.tiny-action{font-size:12px;font-weight:650}
   .register-empty{gap:11px}
   .register-empty-symbol{width:39px;height:39px;flex-basis:39px;font-size:18px}
 }
+
+/* Once an active budget exists, show its allocation before the create-another form. */
+.estimates-layout .detail-stack{margin:0;min-width:0}
+.estimates-layout .detail-stack .panel{min-width:0}
+.estimates-layout .detail-stack .panel-head .btn{font-size:11.5px}
