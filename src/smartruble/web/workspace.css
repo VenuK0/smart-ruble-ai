@@ -117,3 +117,32 @@ a.tiny-action{font-size:12px;font-weight:650}
 @media(prefers-reduced-motion:reduce){
   .usage-fill{transition:none}
 }
+
+
+/* Estimates: one readable register above a compact document editor.
+   The old two-column outer layout produced a full-width, very tall form
+   at ~1280px viewport widths. Keep the document sections vertically ordered
+   and place just the form fields side by side. */
+.estimates-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+.estimates-layout>.panel{min-width:0}
+.estimates-layout .panel-head{padding:16px 20px}
+.estimate-form-body{padding:20px 22px 19px}
+.estimate-form-grid{display:grid;grid-template-columns:minmax(230px,.7fr) minmax(0,1.3fr);gap:22px;align-items:start}
+.estimate-form-primary{min-width:0}
+.estimate-form-primary .field-help{margin:10px 0 0}
+.estimate-form-grid textarea{display:block;width:100%;min-height:132px;height:132px;resize:vertical;line-height:1.5}
+.estimate-form-body .form-actions{margin-top:19px}
+.register-empty{display:flex;align-items:flex-start;gap:17px;padding:26px 24px;background:#FFFEFC}
+.register-empty-symbol{font-size:22px;font-weight:650;line-height:1.15;color:#B72A2D;border:1px solid #EADAD5;border-radius:7px;display:grid;place-items:center;width:47px;height:47px;flex:0 0 47px;background:#FFF5F2}
+.register-empty h3{font-size:15px;line-height:1.35;margin:1px 0 7px;color:#28221F;font-weight:700}
+.register-empty p{font-size:12.5px;line-height:1.55;max-width:580px;color:#746B64}
+@media(max-width:760px){
+  .estimate-form-grid{grid-template-columns:minmax(0,1fr);gap:17px}
+  .estimate-form-grid textarea{height:144px;min-height:144px}
+  .estimate-form-body{padding:16px}
+  .register-empty{padding:21px 17px}
+}
+@media(max-width:380px){
+  .register-empty{gap:11px}
+  .register-empty-symbol{width:39px;height:39px;flex-basis:39px;font-size:18px}
+}
