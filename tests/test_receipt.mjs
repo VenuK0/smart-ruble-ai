@@ -1,0 +1,55 @@
+import {test} from "node:test";
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {runInNewContext} from "node:vm";
+
+const source=readFileSync("src/smartruble/web/receipt-utils.js","utf8");
+const scope={};
+runInNewContext(source,scope);
+const inspect=scope.SRReceipt.inspect;
+
+test("simple two-item receipt totals and per-line sums",()=>{
+  const r=inspect([{name:"Микроконтроллер",qty:"1",price:"2500"},{name:"Шоколад",qty:"1",price:"240"}]);
+  assert.equal(r.valid,true);
+  assert.equal(r.count,2);
+  assert.equal(r.total,2740);
+  assert.deepEqual(Array.from(r.amounts),[2500,240]);
+});
+test("fractional quantities with exact two-decimal totals are supported",()=>{
+  const r=inspect([{name:"Услуга",qty:"0.5",price:"120.50"},{name:"Товар",qty:"2",price:"1.23"}]);
+  assert.equal(r.valid,true);
+  assert.equal(r.total,62.71);
+});
+test("empty names and nonpositive values are rejected",()=>{
+  for(const item of [
+    {name:"",qty:"1",price:"10"},
+    {name:"Товар",qty:"0",price:"10"},
+    {name:"Товар",qty:"1",price:"-10"},
+    {name:"Товар",qty:"",price:"10"},
+    {name:"Товар",qty:"1",price:""},
+  ]){
+    const r=inspect([item]);
+    assert.equal(r.valid,false,JSON.stringify(item));
+    assert.match(r.message,/позицию №1/);
+  }
+});
+test("more than two kopeck decimals in unit or resulting amount are rejected",()=>{
+  assert.equal(inspect([{name:"Цена",qty:"1",price:"12.345"}]).valid,false);
+  assert.equal(inspect([{name:"Сумма",qty:"0.5",price:"1.23"}]).valid,false);
+  assert.equal(inspect([{name:"Товар",qty:"1",price:"1e5"}]).valid,false);
+});
+test("server maximums are enforced by receipt precheck",()=>{
+  assert.equal(inspect([{name:"Большая цена",qty:"1",price:"1000000001"}]).valid,false);
+  assert.equal(inspect([{name:"Большое количество",qty:"100001",price:"1"}]).valid,false);
+  assert.equal(inspect([{name:"Большая сумма",qty:"100000",price:"100000"}]).valid,false);
+  const hundred=Array.from({length:100},()=>({name:"Товар",qty:"1",price:"1.00"}));
+  assert.equal(inspect(hundred).valid,true);
+  assert.equal(inspect(hundred).total,100);
+  assert.equal(inspect(hundred.concat(hundred[0])).valid,false);
+});
+test("one invalid line cannot silently pass the whole check",()=>{
+  const r=inspect([{name:"Нормальный товар",qty:"1",price:"2"},{name:"",qty:"1",price:"3"}]);
+  assert.equal(r.valid,false);
+  assert.equal(r.total,2);
+  assert.deepEqual(Array.from(r.amounts),[2,null]);
+});

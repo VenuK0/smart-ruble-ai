@@ -218,67 +218,172 @@
   }
   var demoItems=[{name:"Микроконтроллер Arduino Uno R3",qty:1,price:2500},{name:"Шоколад Аленка молочный",qty:1,price:240}];
   function receiptRow(item){
-    var index=Math.random().toString(36).slice(2);
-    return '<div class="receipt-row" data-row="'+index+'">'+
-      '<input class="input item-name" aria-label="Название товара" placeholder="Название товара" maxlength="250" value="'+esc(item.name||"")+'">'+
-      '<input class="input item-qty" type="number" min="0.01" step="0.01" aria-label="Количество" value="'+esc(item.qty||1)+'">'+
-      '<input class="input item-price" type="number" min="0.01" step="0.01" aria-label="Цена, ₽" value="'+esc(item.price||"")+'">'+
-      '<button class="remove-item" type="button" title="Удалить строку" aria-label="Удалить строку">×</button></div>';
+    var key=Math.random().toString(36).slice(2);
+    var name=item.name==null?"":item.name;
+    var qty=item.qty==null?1:item.qty;
+    var price=item.price==null?"":item.price;
+    return '<div class="receipt-row" data-row="'+key+'">'+
+      '<input class="input item-name" aria-label="Название товара" placeholder="Название товара или услуги" maxlength="250" required value="'+esc(name)+'">'+
+      '<input class="input item-qty" type="number" min="0.01" max="100000" step="any" inputmode="decimal" aria-label="Количество" required value="'+esc(qty)+'">'+
+      '<input class="input item-price" type="number" min="0.01" max="1000000000" step="0.01" inputmode="decimal" aria-label="Цена за единицу, ₽" required value="'+esc(price)+'">'+
+      '<output class="receipt-line-total" aria-label="Сумма позиции">—</output>'+
+      '<button class="remove-item" type="button" title="Удалить позицию" aria-label="Удалить позицию">×</button></div>';
   }
   function showReceipts(){
-    root.innerHTML=section("Проверка чеков","Проверяйте каждую позицию по лимитам выбранной сметы.")+
-      (!current()?grantNeeded():'<div class="columns wide-first">'+
-      panel("Новый чек",'<div class="panel-body"><form id="receipt-form">'+
-        '<div class="field"><label for="merchant">Продавец</label><input class="input" id="merchant" value="ООО Электроника" maxlength="200" required></div>'+
-        '<div class="sep"></div><h3 style="margin-bottom:12px">Состав покупки</h3>'+
-        '<div class="receipt-row receipt-columns"><span>Наименование</span><span>Количество</span><span>Цена, ₽</span><span></span></div>'+
-        '<div id="receipt-lines">'+demoItems.map(receiptRow).join("")+'</div>'+
-        '<div class="form-actions receipt-actions"><button class="btn secondary btn-sm" type="button" id="add-item">+ Добавить позицию</button><div class="receipt-total">Сумма чека <strong id="receipt-total">0 ₽</strong></div></div>'+
-        '<div class="sep"></div><div class="form-actions"><button class="btn primary" type="submit">Проверить чек</button><button class="btn secondary" type="button" id="receipt-example">Заполнить пример</button></div>'+
+    var estimate=current();
+    var heading=section("Проверка чеков","Создайте чек и узнайте решение по каждой позиции в рамках выбранной сметы.",
+      '<a class="btn secondary" href="/app/history">Журнал операций</a>');
+    if(!estimate){root.innerHTML=heading+grantNeeded();return;}
+    var available=sum(estimate.limits)-sum(estimate.spent);
+    var resultPlaceholder='<div class="receipt-result-empty"><div class="receipt-result-empty-symbol" aria-hidden="true">✓</div>'+
+      '<h3>Чек пока не проверен</h3><p>Заполните позиции и нажмите «Проверить чек». Здесь появятся суммы, статьи и причины решений по каждой покупке.</p></div>';
+
+    root.innerHTML=heading+
+      '<div class="receipt-context"><div><span>АКТИВНАЯ СМЕТА</span><strong>'+esc(estimate.grant_id)+'</strong></div>'+
+        '<div><span>ОСТАТОК ПО СМЕТЕ</span><strong>'+cash(Math.max(0,available))+'</strong></div>'+
+        '<div><span>ПРОВЕРЕНО ЧЕКОВ</span><strong>'+number(estimate.transactions||0)+'</strong></div>'+
+        '<a href="/app/estimates" class="receipt-context-link">Открыть смету</a></div>'+
+      '<div class="receipts-layout">'+
+      panel("Новый чек",'<div class="panel-body receipt-form-body"><form id="receipt-form">'+
+        '<div class="receipt-document-head"><div><div class="receipt-step">ШАГ 01 / 02</div>'+
+        '<h3>Данные покупки</h3></div><span class="receipt-demo-chip">Демо</span></div>'+
+        '<div class="field receipt-merchant-field"><label for="merchant">Продавец</label>'+
+        '<input class="input" id="merchant" placeholder="Название организации или магазина" maxlength="200" required autocomplete="off">'+
+        '<div class="field-help">Данные используются только для демонстрационной проверки.</div></div>'+
+        '<div class="receipt-items-head"><div><h3>Состав покупки</h3><p>Укажите наименование, количество и цену каждой позиции.</p></div>'+
+        '<button class="btn secondary btn-sm" type="button" id="receipt-example">Заполнить пример</button></div>'+
+        '<div class="receipt-row receipt-columns" aria-hidden="true"><span>Наименование</span><span>Кол-во</span><span>Цена, ₽</span><span>Сумма</span><span></span></div>'+
+        '<div id="receipt-lines">'+receiptRow({name:"",qty:1,price:""})+'</div>'+
+        '<div class="receipt-add-row"><button class="btn secondary btn-sm" type="button" id="add-item">+ Добавить позицию</button>'+
+        '<span class="receipt-count" id="receipt-count">Позиций: 1 / 100</span></div>'+
+        '<div class="receipt-summary"><div><span>Итого по чеку</span><small>До проверки по смете</small></div>'+
+        '<strong id="receipt-total" aria-live="polite">0 ₽</strong></div>'+
+        '<div class="receipt-action-row"><button class="btn primary" id="receipt-submit" type="submit">Проверить чек</button>'+
+        '<button class="btn secondary" type="button" id="receipt-clear">Очистить</button>'+
+        '<button class="btn primary receipt-new" id="receipt-new" type="button" hidden>Новый чек</button></div>'+
         formMessage("receipt-msg")+'</form></div>')+
-      panel("Результат проверки",'<div id="receipt-result">'+empty("Результат ещё не получен","После проверки здесь появятся решения по каждой позиции.")+'</div>')+
-      '</div>');
-    if(!current())return;
-    function refreshReceiptTotal(){
-      var total=0;
-      Array.from($("receipt-lines").querySelectorAll(".receipt-row")).forEach(function(row){
-        var qty=Number(row.querySelector(".item-qty").value);
-        var price=Number(row.querySelector(".item-price").value);
-        if(Number.isFinite(qty)&&Number.isFinite(price)&&qty>0&&price>0)total+=qty*price;
+      panel("Результат проверки",'<div id="receipt-result" aria-live="polite">'+resultPlaceholder+'</div>')+
+      '</div><p class="receipt-footnote">Результаты носят демонстрационный характер: нет списания реальных денег или подключения к платёжной инфраструктуре. Решения «На проверке» требуют участия человека.</p>';
+
+    var form=$("receipt-form");
+    var locked=false;
+    var draftId=null;
+
+    function formItems(){
+      return Array.from($("receipt-lines").querySelectorAll(".receipt-row")).map(function(row){
+        return {name:row.querySelector(".item-name").value.trim(),
+          qty:row.querySelector(".item-qty").value,
+          price:row.querySelector(".item-price").value};
       });
-      $("receipt-total").textContent=cash(total);
+    }
+    function refreshReceiptTotal(){
+      var result=window.SRReceipt.inspect(formItems());
+      $("receipt-count").textContent="Позиций: "+number(result.count)+" / 100";
+      $("receipt-total").textContent=cash(result.total);
+      var rows=$("receipt-lines").querySelectorAll(".receipt-row");
+      Array.from(rows).forEach(function(row,i){
+        row.querySelector(".receipt-line-total").textContent=
+          result.amounts[i]==null?"—":cash(result.amounts[i]);
+      });
+      if(!locked)$("add-item").disabled=rows.length>=100;
+    }
+    function setLocked(value){
+      locked=value;
+      form.classList.toggle("receipt-locked",value);
+      Array.from(form.querySelectorAll("input,button")).forEach(function(el){
+        if(el.id!=="receipt-new")el.disabled=value;
+      });
+      $("receipt-new").hidden=!value;
+      if(value)$("receipt-submit").textContent="Чек проверен";
+      else $("receipt-submit").textContent="Проверить чек";
+    }
+    function resetReceipt(items,merchant){
+      setLocked(false);
+      draftId=null;
+      $("merchant").value=merchant||"";
+      $("receipt-lines").innerHTML=items.map(receiptRow).join("");
+      $("receipt-result").innerHTML=resultPlaceholder;
+      say("receipt-msg","");
+      refreshReceiptTotal();
     }
     $("receipt-lines").addEventListener("input",refreshReceiptTotal);
-    $("add-item").onclick=function(){$("receipt-lines").insertAdjacentHTML("beforeend",receiptRow({qty:1}));refreshReceiptTotal();};
-    $("receipt-example").onclick=function(){$("merchant").value="ООО Электроника";$("receipt-lines").innerHTML=demoItems.map(receiptRow).join("");refreshReceiptTotal();};
-    refreshReceiptTotal();
+    $("add-item").onclick=function(){
+      if(locked)return;
+      if($("receipt-lines").querySelectorAll(".receipt-row").length>=100){
+        toast("Не больше 100 позиций в одном чеке",true);return;
+      }
+      $("receipt-lines").insertAdjacentHTML("beforeend",receiptRow({name:"",qty:1,price:""}));
+      refreshReceiptTotal();
+      var last=$("receipt-lines").lastElementChild;
+      if(last)last.querySelector(".item-name").focus();
+    };
+    $("receipt-example").onclick=function(){resetReceipt(demoItems,"ООО Электроника");};
+    $("receipt-clear").onclick=function(){resetReceipt([{name:"",qty:1,price:""}],"");};
+    $("receipt-new").onclick=function(){resetReceipt([{name:"",qty:1,price:""}],"");$("merchant").focus();};
     $("receipt-lines").onclick=function(e){
-      var btn=e.target.closest(".remove-item");if(!btn)return;
-      if($("receipt-lines").querySelectorAll(".receipt-row").length<=1){toast("В чеке должна остаться хотя бы одна позиция",true);return;}
-      btn.closest(".receipt-row").remove();
+      var button=e.target.closest(".remove-item");
+      if(!button||locked)return;
+      if($("receipt-lines").querySelectorAll(".receipt-row").length<=1){
+        toast("В чеке должна остаться хотя бы одна позиция",true);return;
+      }
+      button.closest(".receipt-row").remove();
       refreshReceiptTotal();
     };
-    $("receipt-form").onsubmit=async function(e){
+    refreshReceiptTotal();
+    form.onsubmit=async function(e){
       e.preventDefault();
-      var id=active;
-      var items=Array.from($("receipt-lines").querySelectorAll(".receipt-row")).map(function(row){
-        return {name:row.querySelector(".item-name").value.trim(),qty:Number(row.querySelector(".item-qty").value),price:Number(row.querySelector(".item-price").value)};
-      });
-      if(items.some(function(x){return !x.name||!Number.isFinite(x.price)||x.price<=0||!Number.isFinite(x.qty)||x.qty<=0;})){
-        say("receipt-msg","Заполните все позиции: название, положительное количество и цену.",true);return;
-      }
-      var key=(crypto.randomUUID?crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2));
-      var payload={id:"demo-"+key,merchant:$("merchant").value.trim(),items:items};
-      var button=$("receipt-form").querySelector("button[type=submit]");button.disabled=true;
+      if(locked)return;
+      var merchant=$("merchant").value.trim();
+      var raw=formItems();
+      var check=window.SRReceipt.inspect(raw);
+      if(!merchant){say("receipt-msg","Укажите продавца.",true);return;}
+      if(!check.valid){say("receipt-msg",check.message,true);return;}
+      var payload={id:draftId||("demo-"+(typeof crypto!=="undefined"&&crypto.randomUUID?
+        crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2))),
+        merchant:merchant,items:raw.map(function(x){return {name:x.name,qty:Number(x.qty),price:Number(x.price)};})};
+      draftId=payload.id;
+      var submit=$("receipt-submit");
+      submit.disabled=true;submit.textContent="Проверяем…";
+      say("receipt-msg","");
       try{
-        var result=await api("/contracts/"+encodeURIComponent(id)+"/validate","POST",payload);
-        say("receipt-msg","Проверка завершена. Сведения сохранены в журнал.");
-        var totals='<div class="summary-inline"><div>Одобрено<b>'+cash(result.approved)+'</b></div><div>На проверке<b>'+cash(result.review)+'</b></div><div>Отклонено<b>'+cash(result.personal_pay)+'</b></div></div>';
-        var rows=result.items.map(function(x){return tr([esc(x.name)+'<small>'+esc(x.reason)+'</small>',badge(x.decision),cash(x.amount)]);});
-        $("receipt-result").innerHTML='<div class="panel-body"><div class="small-data">Чек '+esc(result.receipt_id)+'</div><div style="margin-top:8px">'+badge(result.status)+'</div>'+totals+'</div>'+
-        table(["Товар","Решение",{title:"Сумма",num:true}],rows);
-        await reloadContracts(false);
-      }catch(err){say("receipt-msg",err.message,true);}finally{button.disabled=false;}
+        var result=await api("/contracts/"+encodeURIComponent(active)+"/validate","POST",payload);
+        var cards=[
+          {label:"Одобрено",value:result.approved,variant:"approved"},
+          {label:"На проверке",value:result.review,variant:"review"},
+          {label:"Отклонено",value:result.personal_pay,variant:"rejected"}
+        ].map(function(item){return '<div class="receipt-outcome '+item.variant+'"><span>'+item.label+'</span><strong>'+cash(item.value)+'</strong></div>';}).join("");
+        var rows=result.items.map(function(x){
+          return '<div class="receipt-decision-row"><div class="receipt-decision-text">'+
+            '<strong>'+esc(x.name)+'</strong><small>Статья: '+esc(labels[x.category]||x.category||"Не определена")+'</small>'+
+            '<p>'+esc(x.reason||"Причина не указана")+'</p></div>'+
+            '<div class="receipt-decision-right">'+badge(x.decision)+'<strong>'+cash(x.amount)+'</strong></div></div>';
+        }).join("");
+        var explanation=result.status==="APPROVED"?
+          "Все позиции автоматически одобрены в рамках условий демонстрационной сметы.":
+          result.status==="NEEDS_REVIEW"?
+          "Есть позиции, которые требуют ручной проверки. Они не списаны из лимита автоматически.":
+          "В чеке есть отклонённые позиции. Изучите причины и результаты по каждой строке.";
+        $("receipt-result").innerHTML=
+          '<div class="receipt-result-body"><div class="receipt-step">ШАГ 02 / 02</div>'+
+          '<div class="receipt-result-heading"><div><h3>Проверка завершена</h3><small>Чек '+esc(result.receipt_id)+'</small></div>'+badge(result.status)+'</div>'+
+          '<p class="receipt-result-explanation">'+esc(explanation)+'</p>'+
+          '<div class="receipt-outcomes">'+cards+'</div>'+
+          '<div class="receipt-decisions-title">Разбор позиций <span>'+number(result.items.length)+'</span></div>'+
+          '<div class="receipt-decisions">'+rows+'</div>'+
+          '<div class="receipt-result-links"><a href="/app/history" class="btn secondary btn-sm">Открыть журнал</a></div></div>';
+        say("receipt-msg","Чек сохранён в журнале. Для следующей проверки нажмите «Новый чек».");
+        setLocked(true);
+        try{
+          await reloadContracts(false);
+          toast("Проверка завершена");
+        }catch(refreshErr){
+          toast("Чек сохранён, но данные сметы не обновились. Откройте страницу смет.",true);
+        }
+      }catch(err){
+        say("receipt-msg",err.message,true);
+        submit.disabled=false;
+        submit.textContent="Проверить чек";
+      }
     };
   }
   function dateLabel(timestamp){
