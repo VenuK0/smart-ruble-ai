@@ -1,0 +1,28 @@
+name: Clean merged logo branches
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/cleanup-logo-branches.yml]
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove branches only if still at approved commits
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: VenuK0/smart-ruble-ai
+        run: |
+          set -euo pipefail
+          for spec in 'design/reference-accurate-logo 29c49229aaeefaf7aa493586b0fc7d7ee2df037e' 'design/final-red-contour-logo 57fb60e16986f182b1523f9b4a8de49a1dbafd98'; do
+            branch="${spec%% *}"
+            expected="${spec##* }"
+            current=$(gh api "repos/VenuK0/smart-ruble-ai/git/ref/heads/$branch" --jq .object.sha 2>/dev/null || true)
+            if [ "$current" = "$expected" ]; then
+              gh api -X DELETE "repos/VenuK0/smart-ruble-ai/git/refs/heads/$branch"
+              echo "Cleaned up $branch"
+            else
+              echo "Skipping $branch: ref missing or head moved"
+            fi
+          done
