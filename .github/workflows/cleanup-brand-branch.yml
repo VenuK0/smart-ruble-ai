@@ -1,0 +1,24 @@
+name: Clean up merged brand branch
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/cleanup-brand-branch.yml]
+permissions:
+  contents: write
+jobs:
+  clean:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete temporary branch only if unchanged since approved PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: VenuK0/smart-ruble-ai
+        run: |
+          set -euo pipefail
+          current=$(gh api repos/VenuK0/smart-ruble-ai/git/ref/heads/design/brand-identity-v03 --jq .object.sha 2>/dev/null || true)
+          if [ "$current" = '9a397fb75ebfecab4ec7326fd7c450982ba9d561' ]; then
+            gh api -X DELETE repos/VenuK0/smart-ruble-ai/git/refs/heads/design/brand-identity-v03
+            echo 'Deleted merged design branch'
+          else
+            echo "No deletion: ref changed or no longer exists ($current)"
+          fi
