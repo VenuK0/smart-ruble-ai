@@ -14,7 +14,7 @@ test("CSV is UTF-8 BOM and uses Russian Excel semicolon format",()=>{
 });
 test("safe escaping of quotes, separators and newlines",()=>{
   const result=csv.serialize(["Наименование"],[['Текст "А";\nБ']]);
-  assert.match(result,/'"Текст ""А"";\nБ"'/);
+  assert.match(result,/"Текст ""А"";\nБ"/);
 });
 test("spreadsheet formula injection is prevented for user strings",()=>{
   const result=csv.serialize(["id"],[["=1+1"],["+cmd"],["-HYPERLINK()"],["@SUM()"],["  =cmd"],[100]]);
