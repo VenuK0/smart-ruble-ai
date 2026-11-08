@@ -66,42 +66,45 @@ class WorkspaceTests(unittest.TestCase):
                 root = ElementTree.fromstring(response.text)
                 self.assertTrue(root.tag.endswith("svg"))
                 self.assertIn("#BB080B", response.text)
-        self.assertIn("Контроль грантов и расходов",
+        self.assertIn("КОНТРОЛЬ ГРАНТОВ И РАСХОДОВ",
                       self.client.get("/app/static/brand/logo.svg").text)
 
     def test_approved_red_contour_black_ruble(self):
         from xml.etree import ElementTree as ET
-        ns = {"svg": "http://www.w3.org/2000/svg"}
+        ns = {"s": "http://www.w3.org/2000/svg"}
         for name in ("mark.svg", "favicon.svg", "logo.svg"):
             with self.subTest(name=name):
                 response = self.client.get("/app/static/brand/" + name)
                 self.assertEqual(response.status_code, 200)
                 root = ET.fromstring(response.text)
-                corners = [
-                    group for group in root.findall(".//svg:g", ns)
-                    if group.attrib.get("stroke-width") == "7"
+                contours = [
+                    group for group in root.findall(".//s:g", ns)
+                    if group.attrib.get("stroke-width") == "14"
                 ]
-                self.assertEqual(len(corners), 1)
-                corner_paths = corners[0].findall("svg:path", ns)
-                self.assertEqual(len(corner_paths), 4)
-                self.assertTrue(all(
-                    path.attrib.get("stroke") == "#BB080B"
-                    for path in corner_paths
-                ))
+                self.assertEqual(len(contours), 1)
+                self.assertEqual(contours[0].attrib["stroke"], "#BB080B")
+                self.assertEqual(len(contours[0].findall("s:path", ns)), 4)
                 symbol = [
-                    path for path in root.findall(".//svg:path", ns)
-                    if path.attrib.get("stroke-width") == "5.4"
+                    group for group in root.findall(".//s:g", ns)
+                    if group.attrib.get("fill") == "#111111"
+                    and len(group.findall("s:rect", ns)) == 2
                 ]
                 self.assertEqual(len(symbol), 1)
-                self.assertEqual(symbol[0].attrib.get("stroke"), "#191919")
+                self.assertEqual(len(symbol[0].findall("s:path", ns)), 1)
+                self.assertEqual(len(symbol[0].findall("s:rect", ns)), 2)
                 if name == "favicon.svg":
-                    background = root.find("svg:rect", ns)
+                    background = root.find("s:rect", ns)
                     self.assertIsNotNone(background)
-                    self.assertEqual(background.attrib.get("fill"), "#F0EDE8")
+                    self.assertEqual(background.attrib["fill"], "#FBF7F1")
+                if name == "logo.svg":
+                    self.assertEqual(root.find("s:rect", ns).attrib["fill"], "#FBF7F1")
+                    # Text is outlined in paths: it cannot change fonts in GitHub dark mode.
+                    self.assertEqual(len(root.findall(".//s:text", ns)), 0)
+                    self.assertGreater(len(root.findall(".//s:path", ns)), 25)
 
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
-        self.assertIn("#F0EDE8", css)
+        self.assertIn("#FBF7F1", css)
         self.assertIn("#BB080B", css)
         self.assertIn("#191919", css)
 
