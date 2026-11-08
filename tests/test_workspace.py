@@ -87,6 +87,7 @@ class WorkspaceTests(unittest.TestCase):
                 symbol = [
                     group for group in root.findall(".//s:g", ns)
                     if group.attrib.get("fill") == "#111111"
+                    and len(group.findall("s:rect", ns)) == 2
                 ]
                 self.assertEqual(len(symbol), 1)
                 self.assertEqual(len(symbol[0].findall("s:path", ns)), 1)
