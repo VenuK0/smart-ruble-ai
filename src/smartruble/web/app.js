@@ -270,10 +270,11 @@
     try{return new Date(timestamp*1000).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(_){return "—";}
   }
   async function showHistory(){
-    root.innerHTML=section("История операций","Проверенные чеки, причины решений и контроль целостности журнала.")+
-      (!current()?grantNeeded():panel("Операции по смете: "+esc(active),'<div class="toolbar"><div class="left"><input id="history-search" class="input" placeholder="Поиск по чеку или продавцу" aria-label="Поиск по чеку или продавцу"><select id="history-status" aria-label="Фильтр по результату"><option value="">Все решения</option><option value="APPROVED">Одобрено</option><option value="NEEDS_REVIEW">На проверке</option><option value="PARTIAL">Частично</option></select></div><div class="right"><span id="audit-state" class="status muted">Проверка журнала…</span><button id="history-reload" class="btn secondary btn-sm">Обновить</button></div></div><div id="history-table">'+empty("Загрузка","Получаем историю операций.")+'</div><div id="history-count" class="filter-result"></div>'));
+    root.innerHTML=section("История операций","Последние 100 проверенных чеков, результаты операций и контроль целостности журнала.")+
+      (!current()?grantNeeded():panel("Операции по смете: "+esc(active),'<div class="toolbar"><div class="left"><input id="history-search" class="input" placeholder="Поиск по чеку или продавцу" aria-label="Поиск по чеку или продавцу"><select id="history-status" aria-label="Фильтр по результату"><option value="">Все решения</option><option value="APPROVED">Одобрено</option><option value="NEEDS_REVIEW">На проверке</option><option value="PARTIAL">Частично</option></select></div><div class="right"><span id="audit-state" class="status muted">Проверка журнала…</span><button id="history-export" class="btn secondary btn-sm" type="button" disabled>Экспорт CSV</button><button id="history-reload" class="btn secondary btn-sm" type="button">Обновить</button></div></div><div id="history-table">'+empty("Загрузка","Получаем историю операций.")+'</div><div id="history-count" class="filter-result"></div>'));
     if(!current())return;
     var entries=[];
+    var matched=[];
     function display(){
       var q=$("history-search").value.toLowerCase().trim();
       var filter=$("history-status").value;
@@ -281,6 +282,8 @@
         var r=e.record;
         return (!filter||r.status===filter)&&(!q||txt(r.receipt_id).toLowerCase().includes(q)||txt(r.merchant).toLowerCase().includes(q));
       });
+      matched=subset;
+      $("history-export").disabled=!matched.length;
       var rows=subset.map(function(e){var r=e.record;return tr([dateLabel(e.ts),'<strong>'+esc(r.receipt_id)+'</strong>',esc(r.merchant),badge(r.status),cash(r.approved),cash(r.review),cash(r.personal_pay)]);});
       $("history-table").innerHTML=table(["Дата","Чек","Продавец","Результат",{title:"Одобрено",num:true},{title:"Проверка",num:true},{title:"Отклонено",num:true}],rows,"Подходящих операций нет");
       $("history-count").textContent="Показано записей: "+subset.length+" из "+entries.length;
@@ -294,7 +297,16 @@
         display();
       }catch(err){$("history-table").innerHTML=empty("Не удалось загрузить историю",esc(err.message));}
     }
-    $("history-search").oninput=display;$("history-status").onchange=display;$("history-reload").onclick=load;
+    $("history-search").oninput=display;
+    $("history-status").onchange=display;
+    $("history-reload").onclick=load;
+    $("history-export").onclick=function(){
+      if(!matched.length){toast("Нет операций для выгрузки",true);return;}
+      window.SRCSV.download("smartruble-operations.csv",
+        ["Дата","Смета","Номер чека","Продавец","Результат","Одобрено, ₽","На проверке, ₽","Отклонено, ₽"],
+        matched.map(function(e){var x=e.record;return [dateLabel(e.ts),active,x.receipt_id,x.merchant,
+          statusTitle[x.status]||x.status,x.approved,x.review,x.personal_pay];}));
+    };
     await load();
   }
   function showAntifraud(){
