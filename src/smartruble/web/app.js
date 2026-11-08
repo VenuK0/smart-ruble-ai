@@ -218,18 +218,30 @@
         '<div class="sep"></div><h3 style="margin-bottom:12px">Состав покупки</h3>'+
         '<div class="receipt-row receipt-columns"><span>Наименование</span><span>Количество</span><span>Цена, ₽</span><span></span></div>'+
         '<div id="receipt-lines">'+demoItems.map(receiptRow).join("")+'</div>'+
-        '<div class="form-actions"><button class="btn secondary btn-sm" type="button" id="add-item">+ Добавить позицию</button></div>'+
+        '<div class="form-actions receipt-actions"><button class="btn secondary btn-sm" type="button" id="add-item">+ Добавить позицию</button><div class="receipt-total">Сумма чека <strong id="receipt-total">0 ₽</strong></div></div>'+
         '<div class="sep"></div><div class="form-actions"><button class="btn primary" type="submit">Проверить чек</button><button class="btn secondary" type="button" id="receipt-example">Заполнить пример</button></div>'+
         formMessage("receipt-msg")+'</form></div>')+
       panel("Результат проверки",'<div id="receipt-result">'+empty("Результат ещё не получен","После проверки здесь появятся решения по каждой позиции.")+'</div>')+
       '</div>');
     if(!current())return;
-    $("add-item").onclick=function(){$("receipt-lines").insertAdjacentHTML("beforeend",receiptRow({qty:1}));};
-    $("receipt-example").onclick=function(){$("merchant").value="ООО Электроника";$("receipt-lines").innerHTML=demoItems.map(receiptRow).join("");};
+    function refreshReceiptTotal(){
+      var total=0;
+      Array.from($("receipt-lines").querySelectorAll(".receipt-row")).forEach(function(row){
+        var qty=Number(row.querySelector(".item-qty").value);
+        var price=Number(row.querySelector(".item-price").value);
+        if(Number.isFinite(qty)&&Number.isFinite(price)&&qty>0&&price>0)total+=qty*price;
+      });
+      $("receipt-total").textContent=cash(total);
+    }
+    $("receipt-lines").addEventListener("input",refreshReceiptTotal);
+    $("add-item").onclick=function(){$("receipt-lines").insertAdjacentHTML("beforeend",receiptRow({qty:1}));refreshReceiptTotal();};
+    $("receipt-example").onclick=function(){$("merchant").value="ООО Электроника";$("receipt-lines").innerHTML=demoItems.map(receiptRow).join("");refreshReceiptTotal();};
+    refreshReceiptTotal();
     $("receipt-lines").onclick=function(e){
       var btn=e.target.closest(".remove-item");if(!btn)return;
       if($("receipt-lines").querySelectorAll(".receipt-row").length<=1){toast("В чеке должна остаться хотя бы одна позиция",true);return;}
       btn.closest(".receipt-row").remove();
+      refreshReceiptTotal();
     };
     $("receipt-form").onsubmit=async function(e){
       e.preventDefault();
