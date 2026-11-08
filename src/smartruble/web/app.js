@@ -126,31 +126,79 @@
     bindGrantButtons();
   }
   function showEstimates(){
-    root.innerHTML=section("Сметы и лимиты","Создание и просмотр условий целевого расходования средств.")+
+    root.innerHTML=section("Сметы и лимиты","Реестр смет, остатки средств и статьи расходов.")+
       '<div class="columns wide-first">'+
-      panel("Реестр смет",table(["Идентификатор",{title:"Лимит",num:true},{title:"Израсходовано",num:true},{title:"Остаток",num:true},"Чеков"],contracts.map(function(c){return tr(['<strong>'+esc(c.grant_id)+'</strong>',cash(sum(c.limits)),cash(sum(c.spent)),cash(sum(c.limits)-sum(c.spent)),number(c.transactions)]);}),"Сметы ещё не созданы"))+
-      panel("Новая смета",'<div class="panel-body"><form id="estimate-form">'+field("grant-name","Идентификатор сметы","грант-2026")+
-      '<div class="field" style="margin-top:15px"><label for="estimate-text">Статьи расходов</label><textarea id="estimate-text" rows="6">Расходные материалы — 50 000 ₽\nОборудование — 120 000 ₽\nУслуги хостинга — 10 000 ₽</textarea><div class="field-help">По одной статье и сумме в каждой строке. Нераспознанные строки нужно проверить вручную.</div></div>'+
-      '<div class="form-actions"><button class="btn primary" type="submit">Создать смету</button><button class="btn secondary" type="button" id="new-example">Пример</button></div>'+formMessage("estimate-msg")+'</form></div>')+
-      '</div><div class="stack" id="estimate-details" style="margin-top:18px"></div>';
+      panel("Реестр смет",'<div class="toolbar register-toolbar"><div class="left">'+
+        '<label class="sr-only" for="estimate-search">Поиск сметы</label>'+
+        '<input class="input" id="estimate-search" placeholder="Найти смету по номеру" autocomplete="off">'+
+        '</div><div class="right"><span class="registry-count" id="estimate-count"></span>'+
+        '<button class="btn secondary btn-sm" id="estimate-export" type="button"'+(contracts.length?'':' disabled')+'>Экспорт CSV</button></div></div>'+
+        '<div id="estimate-table"></div>')+
+      panel("Создание сметы",'<div class="panel-body"><form id="estimate-form">'+
+        field("grant-name","Номер / идентификатор","грант-2026")+
+        '<div class="field with-top-gap"><label for="estimate-text">Статьи и лимиты</label>'+
+        '<textarea id="estimate-text" rows="7" maxlength="30000" required>Расходные материалы — 50 000 ₽\nОборудование — 120 000 ₽\nУслуги хостинга — 10 000 ₽</textarea>'+
+        '<div class="field-help">Каждая статья — на отдельной строке. Нераспознанные записи требуют ручной проверки.</div></div>'+
+        '<div class="form-actions"><button class="btn primary" type="submit">Создать смету</button>'+
+        '<button class="btn secondary" type="button" id="new-example">Заполнить пример</button></div>'+
+        formMessage("estimate-msg")+'</form></div>')+
+      '</div><div class="stack detail-stack" id="estimate-details"></div>';
+    function paintList(){
+      var q=$("estimate-search").value.trim().toLocaleLowerCase("ru-RU");
+      var filtered=contracts.filter(function(x){return x.grant_id.toLocaleLowerCase("ru-RU").includes(q);});
+      $("estimate-table").innerHTML=table(["Смета",{title:"Лимит",num:true},{title:"Одобрено",num:true},{title:"Остаток",num:true},""],ledgerRows(filtered),
+        "Сметы не найдены. Измените поисковый запрос или создайте новую смету.");
+      $("estimate-count").textContent="Смет: "+filtered.length;
+      bindGrantButtons();
+    }
+    $("estimate-search").addEventListener("input",paintList);
+    paintList();
+    $("estimate-export").onclick=function(){
+      var q=$("estimate-search").value.trim().toLocaleLowerCase("ru-RU");
+      var filtered=contracts.filter(function(x){return x.grant_id.toLocaleLowerCase("ru-RU").includes(q);});
+      if(!filtered.length){toast("Нет смет для выгрузки",true);return;}
+      window.SRCSV.download("smartruble-estimates.csv",
+        ["Смета","Лимит, ₽","Одобрено, ₽","Остаток, ₽","Обработано чеков"],
+        filtered.map(function(x){var limit=sum(x.limits),spent=sum(x.spent);return [x.grant_id,limit,spent,Math.max(0,limit-spent),x.transactions];}));
+    };
     $("estimate-form").onsubmit=async function(e){
       e.preventDefault();
       var id=$("grant-name").value.trim();
-      if(!id){say("estimate-msg","Введите идентификатор",true);return;}
+      if(!id){say("estimate-msg","Введите номер сметы",true);return;}
+      var button=$("estimate-form").querySelector("button[type=submit]");
+      button.disabled=true;
       try{
         var x=await api("/contracts","POST",{grant_id:id,text:$("estimate-text").value});
-        active=x.grant_id;sessionStorage.setItem("sr-active-grant",active);
-        await reloadContracts();toast(x.unparsed.length?"Смета создана. Не распознано строк: "+x.unparsed.length:"Смета создана");
-      }catch(e){say("estimate-msg",e.message,true);}
+        active=x.grant_id;
+        sessionStorage.setItem("sr-active-grant",active);
+        await reloadContracts();
+        toast(x.unparsed.length?"Смета создана. Требуют проверки строк: "+x.unparsed.length:"Смета создана");
+      }catch(err){say("estimate-msg",err.message,true);}
+      finally{button.disabled=false;}
     };
     $("new-example").onclick=function(){
       $("grant-name").value="грант-"+Date.now().toString().slice(-6);
       $("estimate-text").value="Расходные материалы — 50 000 ₽\nОборудование — 120 000 ₽\nУслуги хостинга — 10 000 ₽";
     };
-    var c=current();
-    if(c){
-      var rows=Object.keys(c.limits).map(function(cat){return tr([esc(labels[cat]||cat),cash(c.limits[cat]),cash(c.spent[cat]||0),cash(c.limits[cat]-(c.spent[cat]||0))]);});
-      $("estimate-details").innerHTML=panel("Статьи активной сметы: "+esc(c.grant_id),table(["Статья",{title:"Лимит",num:true},{title:"Одобрено",num:true},{title:"Остаток",num:true}],rows));
+    var estimate=current();
+    if(estimate){
+      var total=sum(estimate.limits),spent=sum(estimate.spent);
+      var rows=Object.keys(estimate.limits).map(function(cat){
+        var limit=Number(estimate.limits[cat]),used=Number(estimate.spent[cat]||0);
+        return tr([
+          '<strong>'+esc(labels[cat]||cat)+'</strong>',
+          cash(limit),cash(used),
+          '<span class="ledger-balance">'+cash(Math.max(0,limit-used))+'</span>'+progress(used,limit)
+        ]);
+      });
+      $("estimate-details").innerHTML=panel("Статьи сметы · "+esc(estimate.grant_id),
+        '<div class="budget-summary"><div><span>Общий лимит</span><strong>'+cash(total)+'</strong></div>'+
+          '<div><span>Условно одобрено</span><strong>'+cash(spent)+'</strong></div>'+
+          '<div><span>Осталось</span><strong>'+cash(Math.max(0,total-spent))+'</strong></div>'+
+        '</div>'+
+        table(["Статья",{title:"Лимит",num:true},{title:"Одобрено",num:true},{title:"Остаток и освоение",num:true}],rows));
+    }else{
+      $("estimate-details").innerHTML="";
     }
   }
   var demoItems=[{name:"Микроконтроллер Arduino Uno R3",qty:1,price:2500},{name:"Шоколад Аленка молочный",qty:1,price:240}];
