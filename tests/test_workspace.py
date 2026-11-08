@@ -106,7 +106,7 @@ class WorkspaceTests(unittest.TestCase):
 
     def test_sidebar_uses_exact_vector_wordmark_instead_of_html_retyping(self):
         html = self.client.get("/app").text
-        self.assertIn('class="brand-lockup"', html.replace('class="brand brand-lockup"', 'class="brand-lockup"'))
+        self.assertIn('class="brand brand-lockup"', html)
         self.assertIn('/app/static/brand/wordmark.svg?v=5', html)
         self.assertIn('/app/static/brand/mark.svg?v=5', html)
         self.assertNotIn('<span class="brand-text">', html)
@@ -127,7 +127,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn('background:#FBF7F1', css)
         self.assertIn('min-height:79px', css)
         self.assertIn('width:56px', css)
-        self.assertIn('font-size:8.45px', css)
+        self.assertIn('font-size:9px', css)
         self.assertIn('grid-template-columns:286px', css)
         self.assertIn('data-theme="dark"', css)
 
