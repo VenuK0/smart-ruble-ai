@@ -11,7 +11,7 @@ from .parser import parse_estimate
 from .classifier import ItemClassifier
 from .contract import SmartContract
 from .data import make_items, make_transactions
-from .antifraud import detect
+from .antifraud import detect, merchant_features, FEATURES
 from .economics import scenario
 
 app = FastAPI(title="SmartRubleAI Research Prototype", version="0.3.0-dev",
@@ -127,11 +127,30 @@ def antifraud_demo(seed: int = 0):
         raise HTTPException(422, "Неверный seed")
     transactions, planted = make_transactions(seed=seed)
     ranked = detect(transactions, seed=seed)
+    merchant_ids, feature_matrix = merchant_features(transactions)
+    features_by_merchant = {
+        merchant: dict(zip(FEATURES, (float(value) for value in row)))
+        for merchant, row in zip(merchant_ids, feature_matrix)
+    }
+    top = [
+        {"merchant": merchant,
+         "anomaly_score": round(float(score), 4),
+         "planted_anomaly": merchant in planted,
+         "signals": {
+             "transaction_count": int(features_by_merchant[merchant]["n_tx"]),
+             "student_count": int(features_by_merchant[merchant]["n_students"]),
+             "largest_student_share": round(features_by_merchant[merchant]["top_student_share"], 4),
+             "round_large_share": round(features_by_merchant[merchant]["round_share"], 4),
+             "night_share": round(features_by_merchant[merchant]["night_share"], 4),
+             "average_amount_rub": round(features_by_merchant[merchant]["mean_amount"], 2)
+         }}
+        for merchant, score in ranked[:10]
+    ]
     return {"mode": "synthetic", "transactions": len(transactions),
             "merchant_count": len(ranked), "planted_count": len(planted),
-            "top": [{"merchant": merchant, "anomaly_score": round(float(score), 4),
-                     "planted_anomaly": merchant in planted}
-                    for merchant, score in ranked[:10]],
+            "top": top,
+            "score_note": "Оценка аномальности — относительный рейтинг модели, не вероятность мошенничества.",
+            "signals_note": "Признаки — наблюдаемые характеристики синтетического набора, не объяснение причин решения модели.",
             "warning": "Синтетический сценарий, не показатели реального мошенничества"}
 
 
