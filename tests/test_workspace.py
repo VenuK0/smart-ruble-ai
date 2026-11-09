@@ -174,7 +174,7 @@ class WorkspaceTests(unittest.TestCase):
                 page = self.client.get(url).text
                 self.assertIn("/app/static/workspace.css?v=2", page)
                 self.assertIn("/app/static/export.js?v=1", page)
-                self.assertIn("/app/static/app.js?v=10", page)
+                self.assertIn("/app/static/app.js?v=11", page)
         css = self.client.get("/app/static/workspace.css")
         self.assertEqual(css.status_code, 200)
         self.assertIn(".welcome-panel", css.text)
@@ -274,7 +274,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/receipts").text
         self.assertIn('/app/static/receipts.css?v=2', html)
         self.assertIn('/app/static/receipt-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=10', html)
+        self.assertIn('/app/static/app.js?v=11', html)
         script = self.client.get("/app/static/app.js").text
         for text in [
             'class="receipt-context"',
@@ -319,7 +319,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/history").text
         self.assertIn('/app/static/history.css?v=1', html)
         self.assertIn('/app/static/history-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=10', html)
+        self.assertIn('/app/static/app.js?v=11', html)
         js = self.client.get("/app/static/app.js").text
         for token in [
             'class="history-context"',
@@ -359,7 +359,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/antifraud").text
         self.assertIn('/app/static/antifraud.css?v=1', html)
         self.assertIn('/app/static/antifraud-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=10', html)
+        self.assertIn('/app/static/app.js?v=11', html)
         for path in ["/app/static/antifraud.css", "/app/static/antifraud-utils.js"]:
             self.assertEqual(self.client.get(path).status_code, 200)
         js = self.client.get("/app/static/app.js").text
@@ -379,6 +379,32 @@ class WorkspaceTests(unittest.TestCase):
         css = self.client.get("/app/static/antifraud.css").text
         self.assertIn('@media(max-width:680px)', css)
         self.assertIn('.af-rank-item.selected', css)
+
+    def test_economics_ui_scenarios_and_assumption_disclaimers(self):
+        html = self.client.get("/app/economics").text
+        self.assertIn('/app/static/economics.css?v=1', html)
+        self.assertIn('/app/static/economics-utils.js?v=1', html)
+        self.assertIn('/app/static/app.js?v=11', html)
+        for path in ["/app/static/economics.css", "/app/static/economics-utils.js"]:
+            self.assertEqual(self.client.get(path).status_code, 200, path)
+        js = self.client.get("/app/static/app.js").text
+        for token in [
+            'id="econ-form"', 'id="econ-results"', 'id="econ-result"',
+            'class="econ-fields"', 'class="econ-preset"',
+            'window.SREconomics.volumes', 'window.SREconomics.chartLines',
+            'window.SREconomics.projection', 'window.SREconomics.barWidth',
+            'Promise.all(volumes.map', '"/economics/scenario"',
+            'Накопленный эффект за 5 лет', 'Анализ чувствительности',
+            'Упрощённый накопленный эффект',
+            'предположений', 'не подтверждённая экономия',
+            'Простая окупаемость', 'Не достигается',
+        ]:
+            with self.subTest(token=token):
+                self.assertIn(token, js)
+        css = self.client.get("/app/static/economics.css").text
+        self.assertIn('.econ-chart', css)
+        self.assertIn('@media(max-width:680px)', css)
+        self.assertIn('.econ-table-scroll', css)
 
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
