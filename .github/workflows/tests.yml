@@ -36,3 +36,19 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Reproduce synthetic stress evaluation
         run: PYTHONPATH=src python -m smartruble.robustness
+      - name: Install browser smoke dependencies
+        run: python -m pip install playwright==1.55.0
+      - name: Check six real pages at five viewport widths
+        run: |
+          PYTHONPATH=src python -m uvicorn smartruble.api:app --host 127.0.0.1 --port 8765 > /tmp/smartruble-browser-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+          PYTHONPATH=src python tests/browser_smoke.py
+      - name: Upload screen review snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartruble-viewport-review
+          path: browser-artifacts/*.png
+          if-no-files-found: ignore
+
