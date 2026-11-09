@@ -17,17 +17,18 @@
   <link rel="stylesheet" href="/app/static/history.css?v=1">
   <link rel="stylesheet" href="/app/static/antifraud.css?v=1">
   <link rel="stylesheet" href="/app/static/economics.css?v=1">
+  <link rel="stylesheet" href="/app/static/polish.css?v=1">
   <script src="/app/static/navigation.js?v=1" defer></script>
   <script src="/app/static/export.js?v=1" defer></script>
   <script src="/app/static/receipt-utils.js?v=1" defer></script>
   <script src="/app/static/history-utils.js?v=1" defer></script>
   <script src="/app/static/antifraud-utils.js?v=1" defer></script>
   <script src="/app/static/economics-utils.js?v=1" defer></script>
-  <script src="/app/static/app.js?v=11" defer></script>
+  <script src="/app/static/app.js?v=12" defer></script>
 </head>
 <body>
   <div class="shell">
-    <aside class="sidebar" aria-label="Боковое меню">
+    <aside class="sidebar" id="sidebar" aria-label="Боковое меню">
       <a class="brand brand-lockup" href="/app" aria-label="СмартРубль AI — Контроль грантов и расходов. Главная">
         <img class="brand-mark" src="/app/static/brand/mark.svg?v=6" width="56" height="56" alt="" aria-hidden="true">
         <span class="brand-copy">
@@ -74,7 +75,7 @@
         </div>
       </header>
       <main class="content" id="page">
-        <h1>Загрузка…</h1>
+        <div class="page-loading" role="status" aria-live="polite"><span class="page-loading-pulse" aria-hidden="true"></span><span>Загружаем рабочее место…</span></div>
       </main>
       <footer class="global-foot">СмартРубль AI · Демонстрационная версия · Реальные платежи не выполняются</footer>
     </div>
