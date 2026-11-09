@@ -107,13 +107,13 @@ class WorkspaceTests(unittest.TestCase):
     def test_sidebar_uses_exact_vector_wordmark_instead_of_html_retyping(self):
         html = self.client.get("/app").text
         self.assertIn('class="brand brand-lockup"', html)
-        self.assertIn('/app/static/brand/wordmark.svg?v=6', html)
+        self.assertIn('/app/static/brand/wordmark.svg?v=7', html)
         self.assertIn('/app/static/brand/mark.svg?v=6', html)
         self.assertNotIn('<span class="brand-text">', html)
         self.assertIn("КОНТРОЛЬ ГРАНТОВ И РАСХОДОВ", html)
         response = self.client.get("/app/static/brand/wordmark.svg")
         self.assertEqual(response.status_code, 200)
-        self.assertIn('viewBox="244 51 658 77"', response.text)
+        self.assertIn('viewBox="244 50 658 95"', response.text)
         self.assertIn('#BB080B', response.text)
         self.assertIn('#111111', response.text)
         from xml.etree import ElementTree as ET
@@ -138,7 +138,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertNotIn('/app/static/theme.js', html)
         self.assertIn('id="mobile-scrim"', html)
         self.assertIn('aria-controls="navigation"', html)
-        self.assertIn('/app/static/design.css?v=6', html)
+        self.assertIn('/app/static/design.css?v=7', html)
         self.assertIn('class="nav-icon"', html)
         css = self.client.get("/app/static/design.css").text
         self.assertIn('color-scheme:light', css)
@@ -153,8 +153,35 @@ class WorkspaceTests(unittest.TestCase):
                      "/app/antifraud", "/app/economics"]:
             with self.subTest(path=path):
                 html = self.client.get(path).text
-                self.assertIn('/app/static/design.css?v=6', html)
+                self.assertIn('/app/static/design.css?v=7', html)
                 self.assertNotIn('/app/static/theme.js', html)
+
+    def test_wordmark_viewport_covers_cyrillic_descenders(self):
+        """Compact wordmark must not crop the descenders of р and у."""
+        import re
+        from xml.etree import ElementTree as ET
+
+        response = self.client.get("/app/static/brand/wordmark.svg")
+        self.assertEqual(response.status_code, 200)
+        root = ET.fromstring(response.text)
+        x, y, width, height = map(float, root.attrib["viewBox"].split())
+        self.assertEqual(width, 658)
+        self.assertLessEqual(y, 51)
+        self.assertGreaterEqual(y + height, 144)
+        ns = {"s": "http://www.w3.org/2000/svg"}
+        paths = root.findall(".//s:path", ns)
+        self.assertGreaterEqual(len(paths), 12)
+        # At scale .042969 and baseline 122, a -426-font-unit
+        # descender reaches y=140.3: the old bottom=128 clipped it.
+        transforms = [p.attrib.get("transform", "") for p in paths]
+        self.assertTrue(any("scale(0.042969 -0.042969)" in t for t in transforms))
+        self.assertTrue(any(re.search(r"-42[0-9]", p.attrib.get("d", ""))
+                            for p in paths))
+        css = self.client.get("/app/static/design.css").text
+        self.assertIn("aspect-ratio:658 / 95", css)
+        html = self.client.get("/app").text
+        self.assertIn('class="brand-wordmark"', html)
+        self.assertIn('width="174" height="25"', html)
 
     def test_lighter_vector_wordmark_filter(self):
         response = self.client.get("/app/static/brand/wordmark.svg")
