@@ -174,7 +174,7 @@ class WorkspaceTests(unittest.TestCase):
                 page = self.client.get(url).text
                 self.assertIn("/app/static/workspace.css?v=2", page)
                 self.assertIn("/app/static/export.js?v=1", page)
-                self.assertIn("/app/static/app.js?v=12", page)
+                self.assertIn("/app/static/app.js?v=13", page)
         css = self.client.get("/app/static/workspace.css")
         self.assertEqual(css.status_code, 200)
         self.assertIn(".welcome-panel", css.text)
@@ -274,7 +274,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/receipts").text
         self.assertIn('/app/static/receipts.css?v=2', html)
         self.assertIn('/app/static/receipt-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=12', html)
+        self.assertIn('/app/static/app.js?v=13', html)
         script = self.client.get("/app/static/app.js").text
         for text in [
             'class="receipt-context"',
@@ -319,7 +319,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/history").text
         self.assertIn('/app/static/history.css?v=1', html)
         self.assertIn('/app/static/history-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=12', html)
+        self.assertIn('/app/static/app.js?v=13', html)
         js = self.client.get("/app/static/app.js").text
         for token in [
             'class="history-context"',
@@ -359,7 +359,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/antifraud").text
         self.assertIn('/app/static/antifraud.css?v=1', html)
         self.assertIn('/app/static/antifraud-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=12', html)
+        self.assertIn('/app/static/app.js?v=13', html)
         for path in ["/app/static/antifraud.css", "/app/static/antifraud-utils.js"]:
             self.assertEqual(self.client.get(path).status_code, 200)
         js = self.client.get("/app/static/app.js").text
@@ -384,7 +384,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/economics").text
         self.assertIn('/app/static/economics.css?v=1', html)
         self.assertIn('/app/static/economics-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=12', html)
+        self.assertIn('/app/static/app.js?v=13', html)
         for path in ["/app/static/economics.css", "/app/static/economics-utils.js"]:
             self.assertEqual(self.client.get(path).status_code, 200, path)
         js = self.client.get("/app/static/app.js").text
@@ -411,8 +411,8 @@ class WorkspaceTests(unittest.TestCase):
                       "/app/history", "/app/antifraud", "/app/economics"]:
             with self.subTest(route=route):
                 html = self.client.get(route).text
-                self.assertIn('/app/static/polish.css?v=1', html)
-                self.assertIn('/app/static/app.js?v=12', html)
+                self.assertIn('/app/static/polish.css?v=2', html)
+                self.assertIn('/app/static/app.js?v=13', html)
                 self.assertIn('id="sidebar"', html)
                 self.assertIn('id="mobile-scrim"', html)
                 self.assertIn('Загружаем рабочее место', html)
@@ -435,6 +435,27 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn('sidebar.setAttribute("aria-hidden"', script)
         self.assertIn('$("menu-toggle").focus()', script)
         self.assertIn('syncMobileMenu();', script)
+
+    def test_mobile_receipt_fields_and_table_hints(self):
+        js = self.client.get("/app/static/app.js").text
+        for label in [
+            'receipt-mobile-label qty-label',
+            'receipt-mobile-label price-label',
+            'receipt-mobile-label total-label',
+            'table-swipe-hint',
+            'Таблица данных с горизонтальной прокруткой',
+            'aria-label="Количество"',
+            'aria-label="Цена за единицу, ₽"',
+        ]:
+            with self.subTest(label=label):
+                self.assertIn(label, js)
+        css = self.client.get("/app/static/polish.css").text
+        self.assertIn('.receipt-row:not(.receipt-columns) .receipt-mobile-label', css)
+        self.assertIn('.table-swipe-hint', css)
+        self.assertIn('.table-wrap:focus-visible', css)
+        html = self.client.get("/app/receipts").text
+        self.assertIn('/app/static/polish.css?v=2', html)
+        self.assertIn('/app/static/app.js?v=13', html)
 
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
