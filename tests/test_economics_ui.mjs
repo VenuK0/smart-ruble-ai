@@ -5,7 +5,7 @@ import {runInNewContext} from "node:vm";
 
 const scope={};
 runInNewContext(readFileSync("src/smartruble/web/economics-utils.js","utf8"),scope);
-const {volumes,projection,chartLines,barWidth}=scope;
+const {volumes,projection,chartLines,barWidth}=scope.SREconomics;
 test("three sensitivity scenarios are 60, 100 and 140 percent of workload",()=>{
   const v=Array.from(volumes(5000));
   assert.deepEqual(v.map(x=>x.count),[3000,5000,7000]);
