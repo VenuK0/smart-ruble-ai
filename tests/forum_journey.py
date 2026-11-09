@@ -70,7 +70,7 @@ def main() -> None:
         assert created.status == 200, created.text()
         assert created.json()["grant_id"] == grant_id
         page.wait_for_function(
-            "(id) => document.querySelector('#active-grant').value === id", grant_id
+            "(id) => document.querySelector('#active-grant').value === id", arg=grant_id
         )
         page.locator("#estimate-details").wait_for()
         budget = get_json(context, "/contracts/" + grant_id)
