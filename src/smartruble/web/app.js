@@ -746,7 +746,9 @@
           '<th scope="col">Год 2</th><th scope="col">Год 3</th><th scope="col">Год 4</th><th scope="col">Год 5</th></tr></thead><tbody>'+totals+'</tbody></table></div>'+
         '<p class="econ-table-note">Отрицательное значение означает, что накопленный расчётный эффект ещё не покрыл разовые затраты. Не учитываются инфляция, дисконтирование и прочие издержки.</p>');
     }
+    var calculationVersion=0;
     function markStale(){
+      calculationVersion++;
       $("econ-result").innerHTML=placeholder;
       $("econ-results").innerHTML="";
       say("econ-msg","");
@@ -764,6 +766,7 @@
       try{p=payload();}catch(err){say("econ-msg",err.message,true);return;}
       var volumes;
       try{volumes=window.SREconomics.volumes(p.workflows_per_year);}catch(err){say("econ-msg",err.message,true);return;}
+      var calculation=++calculationVersion;
       var button=$("econ-submit");
       button.disabled=true;button.textContent="Рассчитываем…";
       say("econ-msg","");
@@ -771,10 +774,13 @@
         var results=await Promise.all(volumes.map(function(item){
           return api("/economics/scenario","POST",Object.assign({},p,{workflows_per_year:item.count}));
         }));
+        if(calculation!==calculationVersion)return;
         var cases=volumes.map(function(item,i){return Object.assign({},item,{result:results[i]});});
         renderResult(p,cases);
         say("econ-msg","Готово. Все три сценария рассчитаны сервером по заданным предположениям.");
-      }catch(err){say("econ-msg",err.message,true);}
+      }catch(err){
+        if(calculation===calculationVersion)say("econ-msg",err.message,true);
+      }
       finally{button.disabled=false;button.textContent="Рассчитать сценарии";}
     };
   }
