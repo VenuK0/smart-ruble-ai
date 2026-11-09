@@ -803,21 +803,40 @@
     if(active)sessionStorage.setItem("sr-active-grant",active);else sessionStorage.removeItem("sr-active-grant");
     render();
   });
-  function closeMobileMenu(){
+  function syncMobileMenu(){
+    var mobile=window.innerWidth<=960;
+    var opened=mobile&&document.body.classList.contains("menu-open");
+    var sidebar=$("sidebar");
+    // A translated-out drawer still contains tabbable links unless it is inert.
+    sidebar.inert=mobile&&!opened;
+    sidebar.setAttribute("aria-hidden",mobile&&!opened?"true":"false");
+    $("menu-toggle").setAttribute("aria-expanded",opened?"true":"false");
+    $("menu-toggle").setAttribute("aria-label",opened?"Закрыть меню":"Открыть меню");
+    $("mobile-scrim").hidden=!opened;
+  }
+  function closeMobileMenu(restoreFocus){
+    var wasOpen=document.body.classList.contains("menu-open");
+    if(restoreFocus&&wasOpen&&window.innerWidth<=960)$("menu-toggle").focus();
     document.body.classList.remove("menu-open");
-    $("menu-toggle").setAttribute("aria-expanded","false");
-    $("menu-toggle").setAttribute("aria-label","Открыть меню");
-    $("mobile-scrim").hidden=true;
+    syncMobileMenu();
   }
   $("menu-toggle").onclick=function(){
-    var shown=document.body.classList.toggle("menu-open");
-    $("menu-toggle").setAttribute("aria-expanded",shown?"true":"false");
-    $("menu-toggle").setAttribute("aria-label",shown?"Закрыть меню":"Открыть меню");
-    $("mobile-scrim").hidden=!shown;
+    document.body.classList.toggle("menu-open");
+    syncMobileMenu();
+    if(document.body.classList.contains("menu-open")){
+      var first=$("navigation").querySelector("a");
+      if(first)first.focus();
+    }
   };
-  $("mobile-scrim").onclick=closeMobileMenu;
-  document.addEventListener("keydown",function(e){if(e.key==="Escape")closeMobileMenu();});
-  window.addEventListener("resize",function(){if(window.innerWidth>960)closeMobileMenu();});
+  $("mobile-scrim").onclick=function(){closeMobileMenu(true);};
+  document.addEventListener("keydown",function(e){
+    if(e.key==="Escape"&&document.body.classList.contains("menu-open"))closeMobileMenu(true);
+  });
+  window.addEventListener("resize",function(){
+    if(window.innerWidth>960)closeMobileMenu(false);
+    else syncMobileMenu();
+  });
+  syncMobileMenu();
   reloadContracts().catch(function(err){root.innerHTML=section("Ошибка подключения","Не удалось получить сведения о сметах.")+
     '<div class="notice">'+esc(err.message)+'. Убедитесь, что сервер запущен.</div>';
     toast("Сервер недоступен",true);
