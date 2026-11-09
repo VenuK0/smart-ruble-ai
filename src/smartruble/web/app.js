@@ -630,35 +630,158 @@
     };
   }
   function showEconomics(){
-    root.innerHTML=section("Экономическая оценка","Сравните возможный эффект автоматизации при разных исходных предположениях.")+
-      '<div class="notice">Расчёт — иллюстративный сценарий, а не подтверждённая экономия организации. Для оценки внедрения нужны реальные замеры времени и расходов.</div>'+
-      '<div class="columns wide-first">'+
-      panel("Параметры расчёта",'<div class="panel-body"><form id="econ-form"><div class="form-grid">'+
-      field("econ-count","Отчётов в год","5000","number")+
-      field("econ-before","Проверка вручную, мин","20","number")+
-      field("econ-after","С системой, мин","8","number")+
-      field("econ-hour","Стоимость рабочего часа, ₽","450","number")+
-      field("econ-maint","Эксплуатация в год, ₽","200000","number")+
-      field("econ-dev","Затраты на разработку, ₽","1018000","number")+
-      '</div><div class="form-actions"><button type="submit" class="btn primary">Рассчитать</button></div>'+formMessage("econ-msg")+'</form></div>')+
-      panel("Расчётный результат",'<div id="econ-result">'+empty("Нет результатов","Введите параметры и выполните расчёт.")+'</div>')+
-      '</div>';
+    var assumptions=[
+      {id:"econ-count",name:"Отчётов в год",value:5000,min:1,max:100000000,step:1,help:"Ожидаемое число проверок за год"},
+      {id:"econ-before",name:"Ручная проверка, мин",value:20,min:.01,max:100000,step:"any",help:"Время обработки одного отчёта вручную"},
+      {id:"econ-after",name:"С системой, мин",value:8,min:0,max:100000,step:"any",help:"Предполагаемое время после автоматизации"},
+      {id:"econ-hour",name:"Стоимость часа, ₽",value:450,min:.01,max:100000000,step:"any",help:"Расчётная стоимость рабочего времени"},
+      {id:"econ-maint",name:"Эксплуатация за год, ₽",value:200000,min:0,max:100000000000,step:"any",help:"Предполагаемые ежегодные затраты"},
+      {id:"econ-dev",name:"Разработка, ₽",value:1018000,min:0,max:100000000000,step:"any",help:"Разовая оценка стоимости разработки"}
+    ];
+    function inputField(item){
+      return '<div class="field econ-field"><label for="'+item.id+'">'+item.name+'</label>'+
+        '<input class="input" id="'+item.id+'" type="number" min="'+item.min+'" max="'+item.max+'" step="'+item.step+'" required value="'+item.value+'">'+
+        '<div class="field-help">'+item.help+'</div></div>';
+    }
+    var placeholder='<div class="econ-empty"><div class="econ-empty-icon" aria-hidden="true">▥</div>'+
+      '<h3>Расчёт ещё не выполнен</h3><p>Укажите предположения и нажмите «Рассчитать». Система сравнит низкую, базовую и высокую нагрузку.</p></div>';
+    root.innerHTML=section("Экономическая оценка","Исследуйте возможный эффект автоматизации при разных предположениях о нагрузке и затратах.")+
+      '<div class="econ-warning"><strong>Это сценарный расчёт, а не подтверждённая экономия.</strong> Все исходные показатели заданы в качестве предположений. Без реальных замеров, дисконтирования, налогов, рисков и затрат на интеграцию цифры нельзя считать прогнозом фактической окупаемости.</div>'+
+      '<div class="econ-layout">'+
+      panel("Исходные предположения",'<div class="econ-form-body"><div class="econ-section-head"><span>ВВОДНЫЕ ДАННЫЕ</span><p>Все значения можно редактировать. Данные не сохраняются на сервере.</p></div>'+
+        '<form id="econ-form">'+
+        '<div class="econ-fields">'+assumptions.map(inputField).join("")+'</div>'+
+        '<div class="econ-presets"><span>Быстрый выбор объёма:</span>'+
+          '<button type="button" class="econ-preset" data-volume="2000">2 000</button>'+
+          '<button type="button" class="econ-preset" data-volume="5000">5 000</button>'+
+          '<button type="button" class="econ-preset" data-volume="10000">10 000</button></div>'+
+        '<div class="econ-submit-row"><button id="econ-submit" class="btn primary" type="submit">Рассчитать сценарии</button>'+
+        '<span>Сервер проверит формулы для трёх вариантов нагрузки</span></div>'+
+        formMessage("econ-msg")+'</form></div>')+
+      panel("Результат базового сценария",'<div id="econ-result" aria-live="polite">'+placeholder+'</div>')+
+      '</div>'+
+      '<div id="econ-results"></div>'+
+      '<p class="econ-footer">Методика: прямой денежный эквивалент сэкономленного рабочего времени и простая окупаемость без дисконтирования. Положительный расчётный эффект не означает реальную экономию бюджета или сокращение затрат организации.</p>';
+
+    function payload(){
+      var keys=["econ-count","econ-before","econ-after","econ-hour","econ-maint","econ-dev"];
+      var values=keys.map(function(id){return Number($(id).value);});
+      if(values.some(function(v){return !Number.isFinite(v);}))throw Error("Введите корректные конечные числа во все поля.");
+      if(!Number.isInteger(values[0])||values[0]<1||values[0]>100000000)throw Error("Число отчётов должно быть целым от 1 до 100 000 000.");
+      if(values[1]<=0||values[1]>100000||values[2]<0||values[2]>values[1])
+        throw Error("Время вручную должно быть положительным, а время с системой — от нуля до ручного времени.");
+      if(values[3]<=0||values[3]>100000000||values[4]<0||values[4]>100000000000||values[5]<0||values[5]>100000000000)
+        throw Error("Проверьте стоимость часа и суммы затрат. Они должны быть неотрицательными и в пределах формы.");
+      return {workflows_per_year:values[0],manual_minutes:values[1],
+        automated_minutes:values[2],hourly_cost_rub:values[3],
+        maintenance_rub_year:values[4],development_rub:values[5]};
+    }
+    function barRow(label,amount,max,kind){
+      return '<div class="econ-breakdown-row"><div><span>'+label+'</span><strong class="'+(amount<0?'econ-negative':'')+'">'+cash(amount)+'</strong></div>'+
+        '<div class="econ-bar-track" aria-hidden="true"><span class="econ-bar-fill '+(kind||"")+'" style="width:'+window.SREconomics.barWidth(amount,max)+'%"></span></div></div>';
+    }
+    function renderResult(input,cases){
+      var current=cases[1].result;
+      var max=Math.max(1,Math.abs(current.gross_labor_value_rub_year),Math.abs(current.maintenance_rub_year),Math.abs(current.net_effect_rub_year));
+      var saving=(input.manual_minutes-input.automated_minutes);
+      var payback=current.payback_years==null?"Не достигается":number(current.payback_years)+" года";
+      $("econ-result").innerHTML='<div class="econ-result-body">'+
+        '<div class="econ-result-intro"><span>БАЗОВЫЙ СЦЕНАРИЙ · '+number(input.workflows_per_year)+' ОТЧЁТОВ В ГОД</span>'+
+        '<h3 class="'+(current.net_effect_rub_year<0?'econ-negative':'')+'">'+cash(current.net_effect_rub_year)+'</h3>'+
+        '<p>Расчётный чистый эффект за год после предполагаемых эксплуатационных расходов.</p></div>'+
+        '<div class="econ-kpis"><div><span>Высвобождение времени</span><strong>'+number(current.hours_saved_per_year)+' ч</strong></div>'+
+        '<div><span>Простая окупаемость</span><strong>'+payback+'</strong></div>'+
+        '<div><span>Сокращение времени на отчёт</span><strong>'+number(saving)+' мин</strong></div>'+
+        '<div><span>Порог покрытия эксплуатации</span><strong>'+(current.breakeven_workflows_per_year==null?"Не достигается":number(current.breakeven_workflows_per_year)+" отчётов/год")+'</strong></div></div>'+
+        '<div class="econ-breakdown"><h4>Структура годового эффекта</h4>'+
+          barRow("Денежный эквивалент времени",current.gross_labor_value_rub_year,max,"gross")+
+          barRow("Расходы на эксплуатацию",current.maintenance_rub_year,max,"expense")+
+          barRow("Чистый годовой эффект",current.net_effect_rub_year,max,current.net_effect_rub_year<0?"negative":"net")+
+        '</div>'+
+        '<div class="econ-development">Предполагаемые разовые затраты на разработку <strong>'+cash(current.development_rub)+'</strong></div>'+
+        '</div>';
+      var chart=window.SREconomics.chartLines(cases);
+      var colors={low:"#B89A83",base:"#BB080B",high:"#417C6B"};
+      var paths=chart.lines.map(function(s){
+        var color=colors[s.id];
+        var points=s.points.map(function(p){return p.x+","+p.y;}).join(" ");
+        return '<polyline points="'+points+'" stroke="'+color+'" stroke-width="'+(s.id==="base"?"3":"2.3")+'" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'+
+          s.points.map(function(p){return '<circle cx="'+p.x+'" cy="'+p.y+'" r="'+(s.id==="base"?"3.6":"2.8")+'" fill="'+color+'"/>';}).join("");
+      }).join("");
+      var zero='<line x1="44" x2="439" y1="'+chart.zero+'" y2="'+chart.zero+'" stroke="#A79C90" stroke-width="1" stroke-dasharray="5 5"/>';
+      var ticks=[0,1,2,3,4,5].map(function(y){return '<text x="'+(44+y*79)+'" y="200" text-anchor="middle">'+y+'</text>';}).join("");
+      var svg='<svg class="econ-chart" role="img" aria-label="Упрощённый накопленный расчётный эффект по трём сценариям за пять лет. Значения и формула указаны ниже." viewBox="0 0 480 212" preserveAspectRatio="xMidYMid meet">'+
+        '<g class="econ-chart-guide"><line x1="44" x2="439" y1="12" y2="12"/><line x1="44" x2="439" y1="178" y2="178"/></g>'+zero+paths+
+        '<g class="econ-chart-ticks">'+ticks+'</g></svg>';
+      var peak=Math.max(1,...cases.map(function(x){return Math.abs(x.result.net_effect_rub_year);}));
+      var comparison=cases.map(function(entry,i){
+        var result=entry.result;
+        var negative=result.net_effect_rub_year<0;
+        return '<div class="econ-case'+(i===1?' is-base':'')+'">'+
+          '<div class="econ-case-top"><span>'+entry.label+'</span><span>'+number(entry.count)+' отч./год</span></div>'+
+          '<strong class="'+(negative?'econ-negative':'')+'">'+cash(result.net_effect_rub_year)+'</strong>'+
+          '<div class="econ-case-bar"><span class="'+(negative?'negative':'')+'" style="width:'+window.SREconomics.barWidth(result.net_effect_rub_year,peak)+'%"></span></div>'+
+          '<div class="econ-case-bottom"><span>Высвобождено '+number(result.hours_saved_per_year)+' ч/год</span>'+
+          '<span>Окупаемость: '+(result.payback_years==null?"не достигается":number(result.payback_years)+" г.")+'</span></div></div>';
+      }).join("");
+      var totals=cases.map(function(entry){
+        var row=window.SREconomics.projection(entry.result,5);
+        return '<tr><th scope="row">'+entry.label+'</th>'+row.map(function(r){return '<td>'+cash(r.value)+'</td>';}).join("")+'</tr>';
+      }).join("");
+      $("econ-results").innerHTML=
+        '<div class="econ-bottom-grid">'+
+          panel("Анализ чувствительности",'<div class="econ-compare-intro">Сравнение при 60%, 100% и 140% от указанной нагрузки. Время обработки и затраты во всех вариантах одинаковые.</div>'+
+            '<div class="econ-cases">'+comparison+'</div>')+
+          panel("Накопленный эффект за 5 лет",'<div class="econ-chart-body"><p>Упрощённый эффект = годы × чистый годовой эффект − разовые затраты на разработку.</p>'+
+            '<div class="econ-legend"><span class="low">Низкая</span><span class="base">Базовая</span><span class="high">Высокая</span></div>'+
+            svg+'<div class="econ-chart-note">Горизонталь из пунктиров — нулевой эффект. Линии отражают только заданные предположения.</div></div>')+
+        '</div>'+
+        panel("Расшифровка расчётов",'<div class="econ-math">'+
+          '<div><b>1. Высвобожденные часы</b><span>Отчётов в год × (время вручную − время с системой) / 60</span></div>'+
+          '<div><b>2. Денежный эквивалент</b><span>Высвобожденные часы × стоимость часа</span></div>'+
+          '<div><b>3. Чистый эффект за год</b><span>Денежный эквивалент − ежегодная эксплуатация</span></div>'+
+          '<div><b>4. Простая окупаемость</b><span>Разработка / чистый годовой эффект, только если эффект положительный</span></div>'+
+        '</div><div class="econ-table-scroll"><table class="econ-table"><caption>Упрощённый накопленный эффект, ₽</caption>'+
+          '<thead><tr><th scope="col">Сценарий</th><th scope="col">Год 0</th><th scope="col">Год 1</th>'+
+          '<th scope="col">Год 2</th><th scope="col">Год 3</th><th scope="col">Год 4</th><th scope="col">Год 5</th></tr></thead><tbody>'+totals+'</tbody></table></div>'+
+        '<p class="econ-table-note">Отрицательное значение означает, что накопленный расчётный эффект ещё не покрыл разовые затраты. Не учитываются инфляция, дисконтирование и прочие издержки.</p>');
+    }
+    var calculationVersion=0;
+    function markStale(){
+      calculationVersion++;
+      $("econ-result").innerHTML=placeholder;
+      $("econ-results").innerHTML="";
+      say("econ-msg","");
+    }
+    $("econ-form").addEventListener("input",markStale);
+    Array.from(root.querySelectorAll(".econ-preset")).forEach(function(button){
+      button.onclick=function(){
+        $("econ-count").value=button.dataset.volume;
+        markStale();
+      };
+    });
     $("econ-form").onsubmit=async function(e){
       e.preventDefault();
-      var payload={workflows_per_year:Number($("econ-count").value),manual_minutes:Number($("econ-before").value),
-        automated_minutes:Number($("econ-after").value),hourly_cost_rub:Number($("econ-hour").value),
-        maintenance_rub_year:Number($("econ-maint").value),development_rub:Number($("econ-dev").value)};
+      var p;
+      try{p=payload();}catch(err){say("econ-msg",err.message,true);return;}
+      var volumes;
+      try{volumes=window.SREconomics.volumes(p.workflows_per_year);}catch(err){say("econ-msg",err.message,true);return;}
+      var calculation=++calculationVersion;
+      var button=$("econ-submit");
+      button.disabled=true;button.textContent="Рассчитываем…";
+      say("econ-msg","");
       try{
-        var d=await api("/economics/scenario","POST",payload);
-        say("econ-msg","Расчёт выполнен по заданным предположениям.");
-        $("econ-result").innerHTML='<div class="panel-body"><dl class="keyvalue"><dt>Высвобождение времени в год</dt><dd>'+number(d.hours_saved_per_year)+' ч</dd>'+
-          '<dt>Денежный эквивалент труда</dt><dd>'+cash(d.gross_labor_value_rub_year)+'</dd>'+
-          '<dt>Эксплуатация в год</dt><dd>'+cash(d.maintenance_rub_year)+'</dd>'+
-          '<dt>Чистый годовой эффект</dt><dd>'+cash(d.net_effect_rub_year)+'</dd>'+
-          '<dt>Простая окупаемость</dt><dd>'+(d.payback_years===null?'Не достигается':number(d.payback_years)+' года')+'</dd>'+
-          '<dt>Минимум отчётов для покрытия эксплуатации</dt><dd>'+(d.breakeven_workflows_per_year===null?'Не достигается':number(d.breakeven_workflows_per_year))+'</dd>'+
-          '</dl><div class="sep"></div><p class="panel-note">Без дисконтирования, налогов, рисков и затрат на реальную интеграцию.</p></div>';
-      }catch(err){say("econ-msg",err.message,true);}
+        var results=await Promise.all(volumes.map(function(item){
+          return api("/economics/scenario","POST",Object.assign({},p,{workflows_per_year:item.count}));
+        }));
+        if(calculation!==calculationVersion)return;
+        var cases=volumes.map(function(item,i){return Object.assign({},item,{result:results[i]});});
+        renderResult(p,cases);
+        say("econ-msg","Готово. Все три сценария рассчитаны сервером по заданным предположениям.");
+      }catch(err){
+        if(calculation===calculationVersion)say("econ-msg",err.message,true);
+      }
+      finally{button.disabled=false;button.textContent="Рассчитать сценарии";}
     };
   }
   function render(){

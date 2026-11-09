@@ -1,0 +1,110 @@
+/* СмартРубль AI · Экономическая оценка v0.3
+   Три сценария предположений, без мнимых прогнозов и автоматических обещаний ROI. */
+.econ-warning{border:1px solid #E6DCD1;background:#F9F5EF;color:#6C5D51;border-radius:8px;padding:14px 17px;font-size:12.5px;line-height:1.65;margin:0 0 18px}
+.econ-warning strong{color:#382F29}
+.econ-layout{display:grid;grid-template-columns:minmax(0,1.03fr) minmax(0,.97fr);gap:17px;align-items:start}
+.econ-layout>.panel,.econ-bottom-grid>.panel{min-width:0}
+.econ-form-body{padding:22px}
+.econ-section-head{border-bottom:1px solid #ECE4DD;padding-bottom:14px;margin-bottom:18px}
+.econ-section-head>span{font-size:10px;letter-spacing:.08em;font-weight:720;color:#93867C}
+.econ-section-head p{font-size:12px;color:#80746A;margin-top:7px;line-height:1.55}
+.econ-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px 14px}
+.econ-field{min-width:0}
+.econ-field>label{display:block;font-size:12px;font-weight:660;color:#3E332D;margin-bottom:7px}
+.econ-field>.input{min-width:0;width:100%;height:40px;min-height:40px;font-size:13px;font-variant-numeric:tabular-nums}
+.econ-field>.field-help{font-size:10.8px;color:#8B7E73;margin-top:6px;line-height:1.4}
+.econ-presets{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:21px;padding-top:17px;border-top:1px solid #ECE4DD}
+.econ-presets>span{color:#75695E;font-size:11.5px;margin-right:5px}
+.econ-preset{border:1px solid #E2D8CD;background:#FBF9F6;color:#53473D;border-radius:6px;cursor:pointer;padding:7px 11px;font-size:11.5px;min-height:32px}
+.econ-preset:hover{border-color:#CAABA4;color:#8A292B;background:#FCF3F1}
+.econ-preset:focus-visible{outline:2px solid #BB080B;outline-offset:2px}
+.econ-submit-row{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:20px}
+.econ-submit-row>.btn{min-height:40px;white-space:nowrap}
+.econ-submit-row>span{font-size:11px;color:#918478;line-height:1.4}
+.econ-form-body .form-message{margin-top:12px}
+.econ-empty{min-height:365px;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:37px;text-align:center;gap:10px}
+.econ-empty-icon{width:54px;height:54px;display:grid;place-items:center;border:1px solid #E8DCD1;border-radius:12px;background:#F7F1EA;color:#A98C76;font-size:29px;margin-bottom:8px}
+.econ-empty h3{font-size:15px;font-weight:710;color:#312922}
+.econ-empty p{font-size:12px;color:#817367;line-height:1.7;max-width:315px}
+.econ-result-body{padding:22px}
+.econ-result-intro{border-bottom:1px solid #EEE6DF;padding-bottom:19px}
+.econ-result-intro>span{font-size:10px;letter-spacing:.07em;color:#8C7E73;font-weight:710}
+.econ-result-intro h3{font-size:31px;line-height:1.2;letter-spacing:-.8px;margin:10px 0 9px;color:#2B2824;font-variant-numeric:tabular-nums}
+.econ-result-intro p{font-size:12px;color:#807469;line-height:1.5}
+.econ-negative{color:#A74446!important}
+.econ-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:17px 0 22px}
+.econ-kpis>div{background:#F9F6F2;border:1px solid #EBE2D9;border-radius:6px;padding:13px;min-width:0}
+.econ-kpis span{display:block;font-size:10.5px;color:#817368;line-height:1.4}
+.econ-kpis strong{display:block;color:#332923;font-size:17px;font-weight:740;line-height:1.3;margin-top:7px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.econ-breakdown h4{margin:0 0 12px;font-size:12px;font-weight:720;color:#312A24}
+.econ-breakdown-row{margin-bottom:13px}
+.econ-breakdown-row>div:first-child{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:7px}
+.econ-breakdown-row span{font-size:11px;color:#786C62}
+.econ-breakdown-row strong{font-size:11.5px;font-weight:720;white-space:nowrap;color:#37302A;font-variant-numeric:tabular-nums}
+.econ-bar-track{height:7px;border-radius:100px;background:#EEE7DF;overflow:hidden}
+.econ-bar-fill{display:block;height:100%;border-radius:100px;background:#C5B2A3}
+.econ-bar-fill.gross{background:#6C9480}
+.econ-bar-fill.expense{background:#BC9B83}
+.econ-bar-fill.net{background:#BB080B}
+.econ-bar-fill.negative{background:#B86C69}
+.econ-development{display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;border-top:1px solid #EEE6DF;padding-top:15px;color:#817368;font-size:11.5px;line-height:1.5}
+.econ-development strong{color:#3E3028;white-space:nowrap;font-weight:720}
+.econ-bottom-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:17px;margin-top:18px}
+.econ-compare-intro{padding:15px 18px 0;color:#786B60;font-size:11.5px;line-height:1.55}
+.econ-cases{padding:12px 18px 19px;display:grid;gap:9px}
+.econ-case{border:1px solid #EAE2DA;background:#FFFEFC;border-radius:7px;padding:13px 14px;min-width:0}
+.econ-case.is-base{border-color:#DFB8B2;background:#FDF7F5;box-shadow:inset 3px 0 0 #BB080B}
+.econ-case-top,.econ-case-bottom{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:6px}
+.econ-case-top span:first-child{font-size:11.5px;font-weight:720;color:#3C312B}
+.econ-case-top span:last-child{font-size:10.5px;color:#83766A}
+.econ-case>strong{display:block;font-size:20px;line-height:1.25;margin:9px 0 10px;font-weight:750;color:#302720;letter-spacing:-.35px;font-variant-numeric:tabular-nums}
+.econ-case-bar{height:7px;border-radius:100px;background:#EEE7DF;overflow:hidden}
+.econ-case-bar span{height:100%;display:block;border-radius:100px;background:#9F8074}
+.econ-case.is-base .econ-case-bar span{background:#BB080B}
+.econ-case-bar span.negative{background:#BF7770}
+.econ-case-bottom{margin-top:10px;color:#8B7E73;font-size:10.7px;line-height:1.4}
+.econ-chart-body{padding:17px 18px}
+.econ-chart-body>p{font-size:11.5px;color:#81746A;line-height:1.6;margin-bottom:15px}
+.econ-legend{display:flex;align-items:center;gap:15px;flex-wrap:wrap;font-size:11px;color:#71665D}
+.econ-legend span{display:inline-flex;align-items:center;gap:6px}
+.econ-legend span:before{content:"";display:inline-block;width:18px;height:3px;border-radius:100px;background:#BA9E88}
+.econ-legend .base:before{background:#BB080B}
+.econ-legend .high:before{background:#417C6B}
+.econ-chart{width:100%;height:auto;display:block;margin:19px 0 3px;overflow:visible}
+.econ-chart-guide line{stroke:#F0E8E0;stroke-width:1}
+.econ-chart-ticks text{font:11px "Segoe UI",Arial,sans-serif;fill:#867B70}
+.econ-chart-note{font-size:11px;color:#8D8075;line-height:1.5}
+#econ-results>.panel{margin-top:18px}
+.econ-math{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px;padding:21px 23px;border-bottom:1px solid #EDE5DC}
+.econ-math>div{min-width:0}
+.econ-math b{display:block;font-size:12px;color:#42342A;margin-bottom:7px}
+.econ-math span{color:#7C6F65;font-size:11.5px;line-height:1.55}
+.econ-table-scroll{overflow-x:auto;max-width:100%;padding:0}
+.econ-table{border-collapse:collapse;width:100%;min-width:850px;font-variant-numeric:tabular-nums}
+.econ-table caption{text-align:left;padding:16px 22px 10px;font-size:12px;color:#6C5D52;font-weight:650}
+.econ-table th,.econ-table td{padding:12px;text-align:right;border-bottom:1px solid #EEE8E1;font-size:11.5px;white-space:nowrap}
+.econ-table th:first-child{text-align:left;padding-left:22px}
+.econ-table td:last-child,.econ-table th:last-child{padding-right:22px}
+.econ-table thead th{color:#7C6D61;background:#FCFAF7;font-size:10.5px}
+.econ-table-note{padding:13px 22px 17px;color:#908174;font-size:11px;line-height:1.6}
+.econ-footer{font-size:11.5px;color:#8E8075;line-height:1.6;margin:18px 3px 0}
+@media(max-width:1420px){.econ-layout,.econ-bottom-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:960px){.econ-math{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:680px){
+ .econ-form-body,.econ-result-body{padding:16px}
+ .econ-fields{grid-template-columns:minmax(0,1fr);gap:14px}
+ .econ-result-intro h3{font-size:26px}
+ .econ-kpis strong{font-size:15px}
+ .econ-kpis>div{padding:11px}
+ .econ-compare-intro{padding:14px 14px 0}
+ .econ-cases{padding:11px 14px 16px}
+ .econ-chart-body{padding:14px}
+ .econ-math{padding:16px}
+ .econ-table-note{padding:12px 16px}
+}
+@media(max-width:360px){
+ .econ-kpis{grid-template-columns:minmax(0,1fr)}
+ .econ-presets>span{flex:1 1 100%}
+ .econ-case-top,.econ-case-bottom{flex-direction:column;align-items:flex-start}
+}
+@media(prefers-reduced-motion:reduce){.econ-preset{transition:none}}
