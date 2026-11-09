@@ -91,6 +91,34 @@ def main():
                     page.screenshot(path=str(ARTIFACTS / f"{width}-{name}.png"), full_page=True)
                 print(f"OK viewport={width}px screen={name}", flush=True)
 
+        # Verify compact SVG actually renders descenders below its old bottom=128.
+        # Geometry-only checks miss raster clipping; draw loaded same-origin SVG.
+        page.set_viewport_size({"width": 1440, "height": 900})
+        page.goto(BASE + "/app", wait_until="domcontentloaded")
+        page.locator("#page .page-head h1").wait_for(timeout=20000)
+        page.wait_for_function("""() => {
+            const image = document.querySelector('.brand-wordmark');
+            return image && image.complete && image.naturalWidth === 658 &&
+                image.naturalHeight === 95;
+        }""")
+        ink = page.locator(".brand-wordmark").evaluate("""img => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 658;
+            canvas.height = 95;
+            const context = canvas.getContext('2d', {willReadFrequently: true});
+            context.drawImage(img, 0, 0);
+            // The previous SVG viewport ended at y=128. With minY=50,
+            // that used to clip all the visible descender pixels below row 78.
+            const pixels = context.getImageData(0, 78, 658, 15).data;
+            let count = 0;
+            for (let p = 0; p < pixels.length; p += 4) {
+                if (pixels[p+3] > 100 && pixels[p] < 180) count++;
+            }
+            return count;
+        }""")
+        assert ink > 8, f"Wordmark descenders still invisible or clipped: {ink}"
+        print("OK vector wordmark descenders visible in Chrome", flush=True)
+
         # Mobile drawer should be inaccessible until opened and restore focus on Escape.
         page.set_viewport_size({"width": 375, "height": 812})
         page.goto(BASE + "/app", wait_until="domcontentloaded")
