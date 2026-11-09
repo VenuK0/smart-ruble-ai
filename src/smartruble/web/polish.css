@@ -70,6 +70,17 @@ textarea:focus-visible{
 .econ-chart{max-width:100%}
 .global-foot{line-height:1.6}
 .toast{padding:12px 16px;line-height:1.5}
+.page-loading{
+  display:flex;align-items:center;gap:13px;min-height:180px;
+  color:#77695E;font-size:13px;line-height:1.6;
+}
+.page-loading-pulse{
+  width:13px;height:13px;flex:0 0 13px;
+  border:2px solid #E4D2C7;border-top-color:#BB080B;
+  border-radius:50%;animation:sr-loading-spin .9s linear infinite;
+}
+@keyframes sr-loading-spin{to{transform:rotate(360deg)}}
+
 ::selection{background:#F1D5D2;color:#321B1B}
 
 /* Less decorative whitespace on laptop screens; data stays the priority. */
