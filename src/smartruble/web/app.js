@@ -22,7 +22,7 @@
   function panel(title,content,right){return '<section class="panel"><div class="panel-head"><h2>'+title+'</h2>'+(right||"")+'</div>'+content+'</section>';}
   function empty(title,help){return '<div class="empty"><strong>'+title+'</strong>'+help+'</div>';}
   function notice(){return '<div class="inline-note"><strong>Демонстрационная версия.</strong> Все операции выполняются на синтетических данных. Средства не списываются, интеграции с платёжными системами нет.</div>';}
-  function table(head,rows,emptyText){return '<div class="table-wrap"><table><thead><tr>'+head.map(function(h){return '<th'+(h.num?' class="number"':'')+'>'+esc(h.title||h)+'</th>';}).join("")+'</tr></thead><tbody>'+(rows.length?rows.join(""):'<tr><td colspan="'+head.length+'" class="table-empty">'+esc(emptyText||"Нет данных")+'</td></tr>')+'</tbody></table></div>';}
+  function table(head,rows,emptyText){return '<div class="table-wrap" tabindex="0" role="region" aria-label="Таблица данных с горизонтальной прокруткой"><table><thead><tr>'+head.map(function(h){return '<th'+(h.num?' class="number"':'')+'>'+esc(h.title||h)+'</th>';}).join("")+'</tr></thead><tbody>'+(rows.length?rows.join(""):'<tr><td colspan="'+head.length+'" class="table-empty">'+esc(emptyText||"Нет данных")+'</td></tr>')+'</tbody></table></div><div class="table-swipe-hint" aria-hidden="true">Проведите по таблице влево, чтобы увидеть остальные столбцы.</div>';}
   function tr(cells){return '<tr>'+cells.map(function(v){return '<td>'+v+'</td>';}).join("")+'</tr>';}
   function field(id,label,value,type){return '<div class="field"><label for="'+id+'">'+label+'</label><input class="input" id="'+id+'" type="'+(type||"text")+'" value="'+esc(value)+'"></div>';}
   function formMessage(id){return '<div class="form-message" role="status" aria-live="polite" id="'+id+'"></div>';}
@@ -224,6 +224,9 @@
     var price=item.price==null?"":item.price;
     return '<div class="receipt-row" data-row="'+key+'">'+
       '<input class="input item-name" aria-label="Название товара" placeholder="Название товара или услуги" maxlength="250" required value="'+esc(name)+'">'+
+      '<span class="receipt-mobile-label qty-label" aria-hidden="true">Кол-во</span>'+
+      '<span class="receipt-mobile-label price-label" aria-hidden="true">Цена, ₽</span>'+
+      '<span class="receipt-mobile-label total-label" aria-hidden="true">Сумма</span>'+
       '<input class="input item-qty" type="number" min="0.01" max="100000" step="any" inputmode="decimal" aria-label="Количество" required value="'+esc(qty)+'">'+
       '<input class="input item-price" type="number" min="0.01" max="1000000000" step="0.01" inputmode="decimal" aria-label="Цена за единицу, ₽" required value="'+esc(price)+'">'+
       '<output class="receipt-line-total" aria-label="Сумма позиции">—</output>'+

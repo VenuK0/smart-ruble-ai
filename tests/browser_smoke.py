@@ -105,6 +105,15 @@ def main():
         assert page.locator("#menu-toggle").evaluate("(el) => document.activeElement === el")
         print("OK mobile drawer inert/focus/Escape", flush=True)
 
+        page.goto(BASE + "/app/receipts", wait_until="domcontentloaded")
+        page.locator("#page .page-head h1").wait_for(timeout=20000)
+        for label in (".qty-label", ".price-label", ".total-label"):
+            assert page.locator("#receipt-lines " + label).first.is_visible(), label
+        page.goto(BASE + "/app/history", wait_until="domcontentloaded")
+        page.locator("#page .page-head h1").wait_for(timeout=20000)
+        assert page.locator(".table-swipe-hint").first.is_visible()
+        print("OK mobile receipt field labels and table swipe hint", flush=True)
+
         # Desktop sidebar preference should persist across a reload.
         page.set_viewport_size({"width": 1440, "height": 900})
         page.goto(BASE + "/app", wait_until="domcontentloaded")
