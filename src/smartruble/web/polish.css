@@ -149,11 +149,27 @@ textarea:focus-visible{
   .receipt-row .remove-item{width:34px}
   .receipt-outcomes{grid-template-columns:1fr}
 }
+/* Mobile controls must communicate their purpose without the desktop table header. */
+.receipt-mobile-label,.table-swipe-hint{display:none}
+.table-wrap:focus-visible{outline:2px solid var(--ui-outline);outline-offset:-2px}
+@media(max-width:680px){
+  .receipt-row:not(.receipt-columns) .receipt-mobile-label{
+    display:block;font-size:10.5px;font-weight:680;line-height:1.3;
+    letter-spacing:.015em;color:#73675F;padding:2px 0 0;
+  }
+  .receipt-row:not(.receipt-columns) .qty-label{grid-column:1}
+  .receipt-row:not(.receipt-columns) .price-label{grid-column:2}
+  .receipt-row:not(.receipt-columns) .total-label{grid-column:3;text-align:right}
+  .table-swipe-hint{
+    display:block;padding:9px 13px 11px;color:#8A786B;font-size:11px;line-height:1.5;
+    border-top:1px solid #EEE7E0;background:#FBF9F6;
+  }
+}
 @media print{
   :root{color-scheme:light}
   html,body{background:#fff!important;overflow:visible}
   .shell,.workspace{display:block!important;min-height:0}
-  .sidebar,.topbar,.global-foot,.mobile-scrim,.toast,
+  .sidebar,.topbar,.global-foot,.mobile-scrim,.toast,.table-swipe-hint,
   .page-actions,.form-actions,.receipt-action-row,.receipt-add-row,
   .toolbar button,.history-toolbar-actions,.econ-preset,.econ-submit-row,
   .af-config-actions,.receipt-context-link{display:none!important}
