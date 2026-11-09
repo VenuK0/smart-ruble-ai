@@ -101,7 +101,7 @@
 }
 .receipt-result-heading h3{font-size:18px;line-height:1.3;color:#24201D;letter-spacing:-.35px}
 .receipt-result-heading small{font-size:10.5px;display:block;overflow-wrap:anywhere;color:#8B8179;margin-top:6px}
-.receipt-result-explanation{color:#6F645B;font-size:12px;line-height:1.55;margin-bottom:19px}
+.receipt-result-explanation{color:#62564D;font-size:13px;line-height:1.6;margin-bottom:19px}
 .receipt-outcomes{
   display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0 0 22px;
 }
@@ -131,9 +131,9 @@
   gap:14px;padding:16px 0;border-bottom:1px solid #EFE9E3;
 }
 .receipt-decision-text{min-width:0}
-.receipt-decision-text>strong{display:block;color:#2F2925;font-size:12px;font-weight:700;line-height:1.4;overflow-wrap:anywhere}
-.receipt-decision-text small{display:block;font-size:10.5px;color:#81756C;margin-top:5px}
-.receipt-decision-text p{color:#71675F;font-size:11.5px;line-height:1.45;margin-top:7px}
+.receipt-decision-text>strong{display:block;color:#2F2925;font-size:13px;font-weight:700;line-height:1.45;overflow-wrap:anywhere}
+.receipt-decision-text small{display:block;font-size:11.5px;color:#75695F;margin-top:6px}
+.receipt-decision-text p{color:#62574F;font-size:12.5px;line-height:1.55;margin-top:8px}
 .receipt-decision-right{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px;text-align:right}
 .receipt-decision-right>strong{font-size:12px;color:#302A25;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
 .receipt-result-links{margin:20px 0 2px}
