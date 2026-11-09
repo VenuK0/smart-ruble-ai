@@ -27,6 +27,16 @@ class EconomicsTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             scenario(5000, 8, 20, 450, 200000, 1018000)
 
+    def test_volume_sensitivity_uses_same_backend_formula(self):
+        values = [scenario(n, 20, 8, 450, 200000, 1018000)
+                  for n in (3000, 5000, 7000)]
+        self.assertEqual([x["net_effect_rub_year"] for x in values],
+                         [70000, 250000, 430000])
+        self.assertEqual([x["hours_saved_per_year"] for x in values],
+                         [600, 1000, 1400])
+        self.assertTrue(values[0]["payback_years"] > values[1]["payback_years"])
+        self.assertTrue(values[1]["payback_years"] > values[2]["payback_years"])
+
     def test_api_calculator(self):
         r = TestClient(app).post("/economics/scenario", json={
             "workflows_per_year": 10000, "manual_minutes": 20,
