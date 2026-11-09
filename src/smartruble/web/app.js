@@ -263,7 +263,7 @@
         '<button class="btn primary receipt-new" id="receipt-new" type="button" hidden>Новый чек</button></div>'+
         formMessage("receipt-msg")+'</form></div>')+
       panel("Результат проверки",'<div id="receipt-result" aria-live="polite">'+resultPlaceholder+'</div>')+
-      '</div><p class="receipt-footnote">Результаты носят демонстрационный характер: нет списания реальных денег или подключения к платёжной инфраструктуре. Решения «На проверке» требуют участия человека.</p>';
+      '</div><p class="receipt-footnote">Результаты носят демонстрационный характер: нет списания реальных денег или подключения к платёжной инфраструктуре. «На проверке» означает необходимость отдельного решения специалиста; ручное согласование в этой версии не реализовано.</p>';
 
     var form=$("receipt-form");
     var locked=false;
@@ -354,14 +354,14 @@
         ].map(function(item){return '<div class="receipt-outcome '+item.variant+'"><span>'+item.label+'</span><strong>'+cash(item.value)+'</strong></div>';}).join("");
         var rows=result.items.map(function(x){
           return '<div class="receipt-decision-row"><div class="receipt-decision-text">'+
-            '<strong>'+esc(x.name)+'</strong><small>Статья: '+esc(labels[x.category]||x.category||"Не определена")+'</small>'+
+            '<strong>'+esc(x.name)+'</strong><small>Статья: '+esc(x.category==="other"?"Не определена":(labels[x.category]||x.category||"Не определена"))+'</small>'+
             '<p>'+esc(x.reason||"Причина не указана")+'</p></div>'+
             '<div class="receipt-decision-right">'+badge(x.decision)+'<strong>'+cash(x.amount)+'</strong></div></div>';
         }).join("");
         var explanation=result.status==="APPROVED"?
           "Все позиции автоматически одобрены в рамках условий демонстрационной сметы.":
           result.status==="NEEDS_REVIEW"?
-          "Есть позиции, которые требуют ручной проверки. Они не списаны из лимита автоматически.":
+          "Автоматическая проверка завершена. Есть позиции, которые требуют решения специалиста; они не списаны из лимита автоматически. Ручное согласование в прототипе пока не реализовано.":
           "В чеке есть отклонённые позиции. Изучите причины и результаты по каждой строке.";
         $("receipt-result").innerHTML=
           '<div class="receipt-result-body"><div class="receipt-step">ШАГ 02 / 02</div>'+
@@ -390,42 +390,131 @@
     try{return new Date(timestamp*1000).toLocaleString("ru-RU",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(_){return "—";}
   }
   async function showHistory(){
-    root.innerHTML=section("История операций","Последние 100 проверенных чеков, результаты операций и контроль целостности журнала.")+
-      (!current()?grantNeeded():panel("Операции по смете: "+esc(active),'<div class="toolbar"><div class="left"><input id="history-search" class="input" placeholder="Поиск по чеку или продавцу" aria-label="Поиск по чеку или продавцу"><select id="history-status" aria-label="Фильтр по результату"><option value="">Все решения</option><option value="APPROVED">Одобрено</option><option value="NEEDS_REVIEW">На проверке</option><option value="PARTIAL">Частично</option></select></div><div class="right"><span id="audit-state" class="status muted">Проверка журнала…</span><button id="history-export" class="btn secondary btn-sm" type="button" disabled>Экспорт CSV</button><button id="history-reload" class="btn secondary btn-sm" type="button">Обновить</button></div></div><div id="history-table">'+empty("Загрузка","Получаем историю операций.")+'</div><div id="history-count" class="filter-result"></div>'));
-    if(!current())return;
+    var estimate=current();
+    root.innerHTML=section("История операций","Проверенные чеки, суммы и основания решений по выбранной смете.",
+      '<a class="btn primary" href="/app/receipts">Проверить новый чек</a>')+
+      (!estimate?grantNeeded():
+      '<div class="history-context"><div><span>АКТИВНАЯ СМЕТА</span><strong>'+esc(active)+'</strong></div>'+
+      '<div><span>ИСТОЧНИК ДАННЫХ</span><strong>Журнал симуляции · до 100 последних операций</strong></div>'+
+      '<span id="audit-state" class="history-audit muted" role="status" aria-live="polite">Проверяем целостность…</span></div>'+
+      '<div class="history-notice">Статус «На проверке» означает, что система не приняла автоматическое решение. Очередь согласования и интерфейс ручного одобрения в прототипе пока не реализованы.</div>'+
+      '<div class="history-stats">'+
+        '<div><span>Операций в выборке</span><strong id="history-stat-count">0</strong></div>'+
+        '<div><span>Условно одобрено</span><strong id="history-stat-approved">0 ₽</strong></div>'+
+        '<div><span>Требует проверки</span><strong id="history-stat-review">0 ₽</strong></div>'+
+        '<div><span>Отклонено</span><strong id="history-stat-rejected">0 ₽</strong></div>'+
+      '</div>'+
+      '<div class="history-layout">'+
+        panel("Журнал операций",'<div class="history-toolbar">'+
+          '<div class="history-filter-area"><div class="field"><label for="history-search">Поиск</label><input id="history-search" class="input" placeholder="Чек, продавец или товар" autocomplete="off"></div>'+
+          '<div class="field"><label for="history-status">Результат</label><select id="history-status"><option value="">Все решения</option><option value="APPROVED">Одобрено</option><option value="NEEDS_REVIEW">На проверке</option><option value="PARTIAL">Частично</option></select></div></div>'+
+          '<div class="history-toolbar-actions"><button id="history-export" class="btn secondary btn-sm" type="button" disabled>Экспорт CSV</button>'+
+          '<button id="history-reload" class="btn secondary btn-sm" type="button">Обновить</button></div></div>'+
+          '<div id="history-table">'+empty("Загрузка","Получаем записи журнала.")+'</div>'+
+          '<div id="history-count" class="history-filter-count">Проверяем данные…</div>')+
+        panel("Детали операции",'<div id="history-detail" class="history-detail">'+
+          '<div class="history-detail-empty">Выберите запись в журнале для просмотра позиций и причин решений.</div></div>')+
+      '</div><p class="history-footnote">История ограничена последними 100 операциями выбранной сметы. Данные находятся в памяти сервера и сбрасываются после перезапуска; это не постоянный платёжный реестр.</p>');
+    if(!estimate)return;
+
     var entries=[];
     var matched=[];
-    function display(){
-      var q=$("history-search").value.toLowerCase().trim();
-      var filter=$("history-status").value;
-      var subset=entries.filter(function(e){
-        var r=e.record;
-        return (!filter||r.status===filter)&&(!q||txt(r.receipt_id).toLowerCase().includes(q)||txt(r.merchant).toLowerCase().includes(q));
-      });
-      matched=subset;
-      $("history-export").disabled=!matched.length;
-      var rows=subset.map(function(e){var r=e.record;return tr([dateLabel(e.ts),'<strong>'+esc(r.receipt_id)+'</strong>',esc(r.merchant),badge(r.status),cash(r.approved),cash(r.review),cash(r.personal_pay)]);});
-      $("history-table").innerHTML=table(["Дата","Чек","Продавец","Результат",{title:"Одобрено",num:true},{title:"Проверка",num:true},{title:"Отклонено",num:true}],rows,"Подходящих операций нет");
-      $("history-count").textContent="Показано записей: "+subset.length+" из "+entries.length;
+    var selectedId="";
+
+    function detail(entry){
+      if(!entry){
+        $("history-detail").innerHTML='<div class="history-detail-empty"><span>Нет выбранной операции.</span><small>Выберите другую запись или измените фильтр.</small></div>';
+        return;
+      }
+      var r=entry.record||{};
+      var items=(r.items||[]).map(function(item){
+        var category=item.category==="other"?"Не определена":(labels[item.category]||item.category||"Не определена");
+        return '<div class="history-item"><div class="history-item-description"><strong>'+esc(item.name)+'</strong>'+
+          '<small>Категория модели: '+esc(category)+'</small>'+
+          '<p>'+esc(item.reason||"Причина не указана")+'</p></div>'+
+          '<div class="history-item-values">'+badge(item.decision)+'<strong>'+cash(item.amount)+'</strong></div></div>';
+      }).join("");
+      $("history-detail").innerHTML=
+        '<div class="history-detail-header"><span class="history-detail-label">Номер чека</span>'+
+        '<strong>'+esc(r.receipt_id)+'</strong><div>'+badge(r.status)+'</div></div>'+
+        '<dl class="history-facts"><dt>Дата</dt><dd>'+dateLabel(entry.ts)+'</dd>'+
+        '<dt>Продавец</dt><dd>'+esc(r.merchant)+'</dd>'+
+        '<dt>Одобрено</dt><dd>'+cash(r.approved)+'</dd>'+
+        '<dt>Требует проверки</dt><dd>'+cash(r.review)+'</dd>'+
+        '<dt>Отклонено</dt><dd>'+cash(r.personal_pay)+'</dd></dl>'+
+        '<div class="history-items-heading">Позиции чека <span>'+number((r.items||[]).length)+'</span></div>'+
+        (items||'<div class="history-items-empty">Сведения о позициях отсутствуют.</div>')+
+        '<p class="history-detail-foot">Решения рассчитаны серверной моделью. Ручное подтверждение спорных позиций здесь не выполняется.</p>';
     }
+
+    function display(){
+      var q=$("history-search").value;
+      var status=$("history-status").value;
+      matched=window.SRHistory.filter(entries,q,status);
+      var totals=window.SRHistory.summarize(matched);
+      $("history-stat-count").textContent=number(totals.count);
+      $("history-stat-approved").textContent=cash(totals.approved);
+      $("history-stat-review").textContent=cash(totals.review);
+      $("history-stat-rejected").textContent=cash(totals.rejected);
+      $("history-export").disabled=!matched.length;
+      if(!matched.some(function(e){return e.record.receipt_id===selectedId;})){
+        selectedId=matched.length?matched[0].record.receipt_id:"";
+      }
+      var rows=matched.map(function(entry,i){
+        var r=entry.record;
+        return tr([
+          dateLabel(entry.ts),
+          '<button type="button" class="history-view" data-index="'+i+'" aria-pressed="'+(r.receipt_id===selectedId?'true':'false')+'" aria-label="Подробнее о чеке '+esc(r.receipt_id)+'">'+esc(r.receipt_id)+'</button>',
+          '<span class="history-merchant">'+esc(r.merchant)+'</span>',
+          badge(r.status),
+          '<strong class="history-amount">'+cash(Number(r.approved||0)+Number(r.review||0)+Number(r.personal_pay||0))+'</strong>'
+        ]);
+      });
+      $("history-table").innerHTML=table(["Дата","Чек","Продавец","Решение",{title:"Сумма",num:true}],rows,
+        entries.length?"Ничего не найдено. Попробуйте изменить фильтр.":"Здесь пока нет операций. Проверьте первый чек.");
+      $("history-count").textContent="Показано "+number(matched.length)+" из "+number(entries.length)+" последних записей. Экспорт учитывает фильтры.";
+      detail(matched.find(function(e){return e.record.receipt_id===selectedId;})||null);
+    }
+
     async function load(){
+      $("history-reload").disabled=true;
+      $("audit-state").textContent="Проверяем целостность…";
+      $("audit-state").className="history-audit muted";
       try{
         var result=await api("/contracts/"+encodeURIComponent(active)+"/history");
         entries=(result.entries||[]).slice().reverse();
-        $("audit-state").textContent=result.chain_valid?"Журнал цел": "Нарушена целостность журнала";
-        $("audit-state").className="status "+(result.chain_valid?"ok":"bad");
+        $("audit-state").textContent=result.chain_valid?
+          "Цепочка записей проверена":"Нарушена целостность журнала";
+        $("audit-state").className="history-audit "+(result.chain_valid?"ok":"bad");
         display();
-      }catch(err){$("history-table").innerHTML=empty("Не удалось загрузить историю",esc(err.message));}
+      }catch(err){
+        entries=[];
+        selectedId="";
+        $("audit-state").textContent="Не удалось проверить журнал";
+        $("audit-state").className="history-audit bad";
+        display();
+        $("history-table").innerHTML=empty("Не удалось получить историю",esc(err.message));
+      }finally{
+        $("history-reload").disabled=false;
+      }
     }
     $("history-search").oninput=display;
     $("history-status").onchange=display;
     $("history-reload").onclick=load;
+    $("history-table").onclick=function(event){
+      var button=event.target.closest(".history-view");
+      if(!button)return;
+      var index=Number(button.dataset.index);
+      if(!Number.isInteger(index)||index<0||index>=matched.length)return;
+      selectedId=matched[index].record.receipt_id;
+      display();
+    };
     $("history-export").onclick=function(){
       if(!matched.length){toast("Нет операций для выгрузки",true);return;}
       window.SRCSV.download("smartruble-operations.csv",
         ["Дата","Смета","Номер чека","Продавец","Результат","Одобрено, ₽","На проверке, ₽","Отклонено, ₽"],
-        matched.map(function(e){var x=e.record;return [dateLabel(e.ts),active,x.receipt_id,x.merchant,
-          statusTitle[x.status]||x.status,x.approved,x.review,x.personal_pay];}));
+        matched.map(function(e){var r=e.record;return [dateLabel(e.ts),active,r.receipt_id,r.merchant,
+          statusTitle[r.status]||r.status,r.approved,r.review,r.personal_pay];}));
     };
     await load();
   }

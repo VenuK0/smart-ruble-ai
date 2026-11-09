@@ -174,7 +174,7 @@ class WorkspaceTests(unittest.TestCase):
                 page = self.client.get(url).text
                 self.assertIn("/app/static/workspace.css?v=2", page)
                 self.assertIn("/app/static/export.js?v=1", page)
-                self.assertIn("/app/static/app.js?v=8", page)
+                self.assertIn("/app/static/app.js?v=9", page)
         css = self.client.get("/app/static/workspace.css")
         self.assertEqual(css.status_code, 200)
         self.assertIn(".welcome-panel", css.text)
@@ -272,9 +272,9 @@ class WorkspaceTests(unittest.TestCase):
 
     def test_receipt_editor_uses_financial_document_layout(self):
         html = self.client.get("/app/receipts").text
-        self.assertIn('/app/static/receipts.css?v=1', html)
+        self.assertIn('/app/static/receipts.css?v=2', html)
         self.assertIn('/app/static/receipt-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=8', html)
+        self.assertIn('/app/static/app.js?v=9', html)
         script = self.client.get("/app/static/app.js").text
         for text in [
             'class="receipt-context"',
@@ -314,6 +314,46 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn("setLocked(true)", script)
         self.assertIn("await reloadContracts(false)", script)
         self.assertIn("Чек сохранён, но данные сметы не обновились", script)
+
+    def test_transaction_history_has_filterable_ledger_and_selected_details(self):
+        html = self.client.get("/app/history").text
+        self.assertIn('/app/static/history.css?v=1', html)
+        self.assertIn('/app/static/history-utils.js?v=1', html)
+        self.assertIn('/app/static/app.js?v=9', html)
+        js = self.client.get("/app/static/app.js").text
+        for token in [
+            'class="history-context"',
+            'id="history-stat-count"',
+            'id="history-stat-approved"',
+            'id="history-stat-review"',
+            'id="history-stat-rejected"',
+            'id="history-search"',
+            'id="history-status"',
+            'class="history-view"',
+            'id="history-detail"',
+            'history-item-description',
+            'history-audit',
+            'window.SRHistory.filter',
+            'window.SRHistory.summarize',
+            'aria-pressed',
+            'Экспорт CSV',
+            'Цепочка записей проверена',
+            'Нарушена целостность журнала',
+        ]:
+            with self.subTest(token=token):
+                self.assertIn(token, js)
+
+    def test_review_state_explains_no_manual_queue_and_categories_are_precise(self):
+        js = self.client.get("/app/static/app.js").text
+        self.assertIn('Очередь согласования и интерфейс ручного одобрения', js)
+        self.assertIn('ручное согласование в этой версии не реализовано', js)
+        self.assertIn('x.category==="other"?"Не определена"', js)
+        css = self.client.get("/app/static/receipts.css").text
+        self.assertIn('font-size:12.5px;line-height:1.55', css)
+        for url in ["/app/static/history.css", "/app/static/history-utils.js"]:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 200, url)
+        self.assertIn('@media(max-width:680px)', self.client.get("/app/static/history.css").text)
 
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
