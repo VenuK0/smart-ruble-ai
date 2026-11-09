@@ -174,7 +174,7 @@ class WorkspaceTests(unittest.TestCase):
                 page = self.client.get(url).text
                 self.assertIn("/app/static/workspace.css?v=2", page)
                 self.assertIn("/app/static/export.js?v=1", page)
-                self.assertIn("/app/static/app.js?v=11", page)
+                self.assertIn("/app/static/app.js?v=12", page)
         css = self.client.get("/app/static/workspace.css")
         self.assertEqual(css.status_code, 200)
         self.assertIn(".welcome-panel", css.text)
@@ -274,7 +274,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/receipts").text
         self.assertIn('/app/static/receipts.css?v=2', html)
         self.assertIn('/app/static/receipt-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=11', html)
+        self.assertIn('/app/static/app.js?v=12', html)
         script = self.client.get("/app/static/app.js").text
         for text in [
             'class="receipt-context"',
@@ -319,7 +319,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/history").text
         self.assertIn('/app/static/history.css?v=1', html)
         self.assertIn('/app/static/history-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=11', html)
+        self.assertIn('/app/static/app.js?v=12', html)
         js = self.client.get("/app/static/app.js").text
         for token in [
             'class="history-context"',
@@ -359,7 +359,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/antifraud").text
         self.assertIn('/app/static/antifraud.css?v=1', html)
         self.assertIn('/app/static/antifraud-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=11', html)
+        self.assertIn('/app/static/app.js?v=12', html)
         for path in ["/app/static/antifraud.css", "/app/static/antifraud-utils.js"]:
             self.assertEqual(self.client.get(path).status_code, 200)
         js = self.client.get("/app/static/app.js").text
@@ -384,7 +384,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/economics").text
         self.assertIn('/app/static/economics.css?v=1', html)
         self.assertIn('/app/static/economics-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=11', html)
+        self.assertIn('/app/static/app.js?v=12', html)
         for path in ["/app/static/economics.css", "/app/static/economics-utils.js"]:
             self.assertEqual(self.client.get(path).status_code, 200, path)
         js = self.client.get("/app/static/app.js").text
@@ -405,6 +405,36 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn('.econ-chart', css)
         self.assertIn('@media(max-width:680px)', css)
         self.assertIn('.econ-table-scroll', css)
+
+    def test_polished_workspace_and_responsive_assets(self):
+        for route in ["/app", "/app/estimates", "/app/receipts",
+                      "/app/history", "/app/antifraud", "/app/economics"]:
+            with self.subTest(route=route):
+                html = self.client.get(route).text
+                self.assertIn('/app/static/polish.css?v=1', html)
+                self.assertIn('/app/static/app.js?v=12', html)
+                self.assertIn('id="sidebar"', html)
+                self.assertIn('id="mobile-scrim"', html)
+                self.assertIn('Загружаем рабочее место', html)
+        css_response = self.client.get("/app/static/polish.css")
+        self.assertEqual(css_response.status_code, 200)
+        css = css_response.text
+        for selector in [
+            ".workspace{min-width:0}", ".table-wrap,.econ-table-scroll",
+            "@media(max-width:960px)", "@media(max-width:680px)",
+            "@media(max-width:380px)", "@media print",
+            ".page-loading", "font-size:16px",
+        ]:
+            with self.subTest(selector=selector):
+                self.assertIn(selector, css)
+
+    def test_mobile_menu_is_not_keyboard_accessible_when_closed(self):
+        script = self.client.get("/app/static/app.js").text
+        self.assertIn('function syncMobileMenu()', script)
+        self.assertIn('sidebar.inert=mobile&&!opened', script)
+        self.assertIn('sidebar.setAttribute("aria-hidden"', script)
+        self.assertIn('$("menu-toggle").focus()', script)
+        self.assertIn('syncMobileMenu();', script)
 
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
