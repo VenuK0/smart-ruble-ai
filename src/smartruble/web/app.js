@@ -519,20 +519,114 @@
     await load();
   }
   function showAntifraud(){
-    root.innerHTML=section("Проверка аномалий","Анализ подозрительных связей между получателями и продавцами на искусственных данных.")+
-      '<div class="notice">Антифрод работает как отдельный исследовательский модуль. Найденные аномалии не доказывают мошенничество и не являются результатом проверки реальных операций.</div>'+
-      panel("Исследование синтетических операций",'<div class="panel-body"><div class="form-grid"><div class="field"><label for="fraud-seed">Номер набора данных</label><input class="input" id="fraud-seed" type="number" min="0" max="10000" step="1" value="3"><div class="field-help">Одинаковый номер даёт воспроизводимый набор.</div></div></div><div class="form-actions"><button id="fraud-run" class="btn primary">Выполнить анализ</button></div>'+formMessage("fraud-msg")+'</div><div id="fraud-table">'+empty("Анализ не проводился","Запустите исследование для просмотра рейтинга аномалий.")+'</div>')+
-      '<div class="caption">Алгоритмы: граф связей и Isolation Forest. Результаты требуют проверки специалистом.</div>';
+    root.innerHTML=section("Проверка аномалий","Исследование необычных финансовых связей и операций на синтетических данных.")+
+      '<div class="af-warning"><strong>Исследовательская модель, не система обвинений.</strong> Анализ использует искусственные данные. Высокая оценка аномальности не означает мошенничество, не является вероятностью и требует независимой проверки специалистом.</div>'+
+      '<div class="af-config">'+
+        '<div class="af-config-heading"><div class="eyebrow">ПАРАМЕТРЫ ИССЛЕДОВАНИЯ</div>'+
+        '<h2>Построить аналитическую выборку</h2><p>Граф связей получателей и продавцов + алгоритм Isolation Forest. Набор с одинаковым номером воспроизводится.</p></div>'+
+        '<div class="af-config-actions"><div class="field"><label for="fraud-seed">Номер набора</label>'+
+        '<input class="input" id="fraud-seed" type="number" min="0" max="10000" step="1" value="3" inputmode="numeric"></div>'+
+        '<button id="fraud-run" class="btn primary" type="button">Выполнить анализ</button></div>'+
+        formMessage("fraud-msg")+'</div>'+
+      '<div id="af-output" aria-live="polite">'+
+        '<div class="af-placeholder"><div class="af-placeholder-icon" aria-hidden="true">◎</div>'+
+        '<h3>Анализ ещё не запускался</h3><p>Введите номер синтетического набора и выполните расчёт, чтобы увидеть рейтинг и характеристики продавцов.</p></div></div>'+
+      '<p class="af-footnote">Используются исключительно синтетические транзакции. Результаты не относятся к реальным людям, продавцам и банковским операциям.</p>';
+    var selected="";
+    var sample=null;
+    function percentText(value){return number(window.SRAntifraud.percent(value))+" %";}
+    function renderDetail(merchant){
+      var item=(sample.top||[]).find(function(x){return x.merchant===merchant;});
+      var target=$("af-detail");
+      if(!target)return;
+      if(!item){
+        target.innerHTML='<div class="af-detail-empty">Выберите продавца слева, чтобы увидеть параметры синтетического сценария.</div>';
+        return;
+      }
+      var s=item.signals||{};
+      var descriptions=window.SRAntifraud.notes(s);
+      var signalData=[
+        {caption:"Операций",value:number(s.transaction_count),help:"Число транзакций продавца"},
+        {caption:"Получателей",value:number(s.student_count),help:"Различные получатели средств"},
+        {caption:"Крупные круглые суммы",value:percentText(s.round_large_share),help:"Доля операций на сумму от 10 000 ₽, кратную 1 000 ₽"},
+        {caption:"Ночные операции",value:percentText(s.night_share),help:"Доля операций с 22:00 до 05:59"},
+        {caption:"Доля одного получателя",value:percentText(s.largest_student_share),help:"Максимальная доля одного получателя"},
+        {caption:"Средняя операция",value:cash(s.average_amount_rub),help:"Средняя сумма в синтетической выборке"}
+      ];
+      target.innerHTML='<div class="af-detail-heading"><div><span class="af-eyebrow">КАРТОЧКА ПРОДАВЦА</span>'+
+        '<h3>'+esc(item.merchant)+'</h3></div><span class="af-groundtruth '+(item.planted_anomaly?'flag':'normal')+'">'+
+        (item.planted_anomaly?'Заложен тестовый сценарий':'Обычный тестовый сценарий')+'</span></div>'+
+        '<div class="af-score"><div><span>Балльная оценка модели</span><strong>'+esc(Number(item.anomaly_score).toFixed(4).replace(".",","))+'</strong></div>'+
+        '<p>Относительная оценка Isolation Forest. Это не вероятность мошенничества.</p></div>'+
+        '<div class="af-signal-grid">'+signalData.map(function(x){
+          return '<div class="af-signal"><span>'+x.caption+'</span><strong>'+x.value+'</strong><small>'+x.help+'</small></div>';
+        }).join("")+'</div>'+
+        '<div class="af-observations"><h4>Наблюдения по простым порогам</h4>'+
+        '<ul>'+descriptions.map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul>'+
+        '<p>Это описание измеренных признаков, а не доказательство нарушения и не объяснение вклада признаков в расчёт модели.</p></div>';
+    }
+    function renderResults(){
+      var data=sample;
+      var top=data.top||[];
+      var bars=window.SRAntifraud.barPositions(top);
+      $("af-output").innerHTML=
+        '<div class="af-summary">'+
+          '<div><span>Транзакций</span><strong>'+number(data.transactions)+'</strong><small>В синтетической выборке</small></div>'+
+          '<div><span>Продавцов</span><strong>'+number(data.merchant_count)+'</strong><small>В графе связей</small></div>'+
+          '<div><span>Заложенных сценариев</span><strong>'+number(data.planted_count)+'</strong><small>Во всём тестовом наборе</small></div>'+
+          '<div><span>В рейтинге</span><strong>'+number(top.length)+'</strong><small>Продавцов с наибольшей оценкой</small></div>'+
+        '</div>'+
+        '<div class="af-layout">'+
+          panel("Рейтинг аномальности",'<div class="af-rank-head"><span>Оценка выше — поведение необычнее относительно выборки</span>'+
+          '<span>Топ '+number(top.length)+'</span></div>'+
+          '<div class="af-rank-list">'+top.map(function(item,i){
+            return '<button type="button" class="af-rank-item'+(selected===item.merchant?' selected':'')+'" data-index="'+i+'" aria-pressed="'+(selected===item.merchant?'true':'false')+'" aria-label="Характеристики продавца '+esc(item.merchant)+'">'+
+              '<span class="af-rank-number">'+(i+1)+'</span><span class="af-rank-content"><span class="af-rank-name">'+esc(item.merchant)+'</span>'+
+              '<span class="af-rank-track" aria-hidden="true"><span class="af-rank-fill" style="width:'+bars[i]+'%"></span></span></span>'+
+              '<span class="af-rank-score">'+esc(Number(item.anomaly_score).toFixed(4).replace(".",","))+'</span></button>';
+          }).join("")+'</div>'+
+          '<div class="af-rank-foot">Длина полосы нормирована только по этому топ-10 и не показывает процент риска или вероятность мошенничества.</div>')+
+          panel("Характеристики продавца",'<div class="af-detail" id="af-detail"></div>')+
+        '</div>'+
+        '<div class="af-method"><h3>Как читать результаты</h3><div class="af-method-grid">'+
+        '<div><strong>1. Рейтинг</strong><p>Isolation Forest сравнивает поведение продавцов в текущем синтетическом наборе.</p></div>'+
+        '<div><strong>2. Признаки</strong><p>Число операций, концентрация, время, круглые суммы и средняя сумма помогают изучить данные.</p></div>'+
+        '<div><strong>3. Интерпретация</strong><p>Заложенные сценарии известны только потому, что набор создан искусственно. Решения о мошенничестве программа не принимает.</p></div>'+
+        '</div></div>';
+      Array.from($("af-output").querySelectorAll(".af-rank-item")).forEach(function(btn){
+        btn.onclick=function(){
+          var i=Number(btn.dataset.index);
+          if(!Number.isInteger(i)||i<0||i>=top.length)return;
+          selected=top[i].merchant;
+          Array.from($("af-output").querySelectorAll(".af-rank-item")).forEach(function(el){
+            var selectedNow=el===btn;
+            el.classList.toggle("selected",selectedNow);
+            el.setAttribute("aria-pressed",String(selectedNow));
+          });
+          renderDetail(selected);
+        };
+      });
+      renderDetail(selected);
+    }
     $("fraud-run").onclick=async function(){
       var seed=Number($("fraud-seed").value);
-      if(!Number.isInteger(seed)||seed<0||seed>10000){say("fraud-msg","Введите целое число от 0 до 10000.",true);return;}
-      var btn=$("fraud-run");btn.disabled=true;
+      if(!Number.isInteger(seed)||seed<0||seed>10000){
+        say("fraud-msg","Введите целое число от 0 до 10000.",true);return;
+      }
+      var button=$("fraud-run");
+      button.disabled=true;button.textContent="Анализируем…";
+      say("fraud-msg","");
       try{
-        var result=await api("/antifraud/demo?seed="+seed);
-        say("fraud-msg","Проанализировано операций: "+number(result.transactions)+". Продавцов: "+number(result.merchant_count)+".");
-        var rows=result.top.map(function(v,i){return tr([number(i+1),'<strong>'+esc(v.merchant)+'</strong>',esc(Number(v.anomaly_score).toFixed(4).replace(".",",")),v.planted_anomaly?'<span class="status warn">Искусственно заложенная аномалия</span>':'<span class="status muted">Обычный сценарий</span>']);});
-        $("fraud-table").innerHTML=table(["№","Продавец","Оценка модели","Тип в тестовом наборе"],rows);
-      }catch(e){say("fraud-msg",e.message,true);}finally{btn.disabled=false;}
+        sample=await api("/antifraud/demo?seed="+encodeURIComponent(seed));
+        if(!Array.isArray(sample.top))throw Error("Сервер вернул неверный формат рейтинга.");
+        selected=sample.top.length?sample.top[0].merchant:"";
+        renderResults();
+        say("fraud-msg","Набор №"+number(seed)+" проанализирован. Можно выбрать продавца в рейтинге.");
+      }catch(e){
+        say("fraud-msg",e.message,true);
+      }finally{
+        button.disabled=false;button.textContent="Выполнить анализ";
+      }
     };
   }
   function showEconomics(){

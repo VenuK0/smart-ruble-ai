@@ -174,7 +174,7 @@ class WorkspaceTests(unittest.TestCase):
                 page = self.client.get(url).text
                 self.assertIn("/app/static/workspace.css?v=2", page)
                 self.assertIn("/app/static/export.js?v=1", page)
-                self.assertIn("/app/static/app.js?v=9", page)
+                self.assertIn("/app/static/app.js?v=10", page)
         css = self.client.get("/app/static/workspace.css")
         self.assertEqual(css.status_code, 200)
         self.assertIn(".welcome-panel", css.text)
@@ -274,7 +274,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/receipts").text
         self.assertIn('/app/static/receipts.css?v=2', html)
         self.assertIn('/app/static/receipt-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=9', html)
+        self.assertIn('/app/static/app.js?v=10', html)
         script = self.client.get("/app/static/app.js").text
         for text in [
             'class="receipt-context"',
@@ -319,7 +319,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/history").text
         self.assertIn('/app/static/history.css?v=1', html)
         self.assertIn('/app/static/history-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=9', html)
+        self.assertIn('/app/static/app.js?v=10', html)
         js = self.client.get("/app/static/app.js").text
         for token in [
             'class="history-context"',
@@ -354,6 +354,31 @@ class WorkspaceTests(unittest.TestCase):
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200, url)
         self.assertIn('@media(max-width:680px)', self.client.get("/app/static/history.css").text)
+
+    def test_anomaly_dashboard_assets_and_explanations(self):
+        html = self.client.get("/app/antifraud").text
+        self.assertIn('/app/static/antifraud.css?v=1', html)
+        self.assertIn('/app/static/antifraud-utils.js?v=1', html)
+        self.assertIn('/app/static/app.js?v=10', html)
+        for path in ["/app/static/antifraud.css", "/app/static/antifraud-utils.js"]:
+            self.assertEqual(self.client.get(path).status_code, 200)
+        js = self.client.get("/app/static/app.js").text
+        for token in [
+            'class="af-config"', 'class="af-summary"',
+            'class="af-layout"', 'class="af-rank-list"',
+            'class="af-signal-grid"', 'id="af-detail"',
+            'window.SRAntifraud.barPositions',
+            'window.SRAntifraud.notes',
+            'Ночные операции',
+            'Крупные круглые суммы',
+            'Это не вероятность мошенничества',
+            'не объяснение вклада признаков',
+        ]:
+            with self.subTest(token=token):
+                self.assertIn(token, js)
+        css = self.client.get("/app/static/antifraud.css").text
+        self.assertIn('@media(max-width:680px)', css)
+        self.assertIn('.af-rank-item.selected', css)
 
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
