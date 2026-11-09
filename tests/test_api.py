@@ -66,9 +66,24 @@ class ApiTests(unittest.TestCase):
     def test_antifraud_synthetic(self):
         r = client.get("/antifraud/demo?seed=3")
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.json()["mode"], "synthetic")
-        self.assertGreater(r.json()["transactions"], 0)
-        self.assertGreater(len(r.json()["top"]), 0)
+        data = r.json()
+        self.assertEqual(data["mode"], "synthetic")
+        self.assertGreater(data["transactions"], 0)
+        self.assertGreater(len(data["top"]), 0)
+        self.assertEqual(len(data["top"]), 10)
+        self.assertIn("не вероятность", data["score_note"])
+        self.assertIn("не объяснение", data["signals_note"])
+        for row in data["top"]:
+            with self.subTest(merchant=row["merchant"]):
+                signals = row["signals"]
+                self.assertGreater(signals["transaction_count"], 0)
+                self.assertGreater(signals["student_count"], 0)
+                self.assertGreater(signals["average_amount_rub"], 0)
+                for key in ["largest_student_share", "round_large_share", "night_share"]:
+                    self.assertGreaterEqual(signals[key], 0)
+                    self.assertLessEqual(signals[key], 1)
+        self.assertEqual(data, client.get("/antifraud/demo?seed=3").json())
+        self.assertEqual(client.get("/antifraud/demo?seed=10001").status_code, 422)
 
 
 if __name__ == "__main__":
