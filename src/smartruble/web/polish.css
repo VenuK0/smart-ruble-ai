@@ -1,0 +1,174 @@
+/* СмартРубль AI · единая финальная полировка v0.3
+   Этот слой следует после предметных стилей. Без перекраски фирменной
+   векторной айдентики и без изменений семантики финансовой модели. */
+:root{
+  --ui-radius:9px;
+  --ui-radius-sm:6px;
+  --ui-outline:#BB080B;
+  --ui-hairline:#E5DDD5;
+  --ui-subtle:#F9F7F3;
+  --ui-text:#292523;
+  --ui-muted:#71665E;
+  --ui-shadow:0 1px 3px rgba(39,31,27,.035);
+}
+html{scroll-padding-top:82px}
+body{overflow-x:clip}
+.workspace{min-width:0}
+.content{width:100%;min-width:0;max-width:1510px}
+.content>*{max-width:100%}
+.page-head{gap:22px;align-items:flex-start}
+.page-head>div:first-child{min-width:0}
+.page-head h1{font-size:clamp(23px,2vw,30px);font-weight:730;line-height:1.2;letter-spacing:-.75px}
+.page-head .page-description{line-height:1.6;color:#71665E}
+.page-actions{gap:9px;flex-shrink:0}
+.eyebrow{font-size:10.5px;letter-spacing:.075em;font-weight:700}
+.panel{min-width:0;border:1px solid var(--ui-hairline);border-radius:var(--ui-radius);background:#FFFEFD;box-shadow:var(--ui-shadow)}
+.panel-head{gap:12px;padding:16px 20px;background:#FCFAF7;border-bottom:1px solid #EBE4DD;border-radius:var(--ui-radius) var(--ui-radius) 0 0}
+.panel-head h2{font-size:14px;letter-spacing:-.1px;font-weight:710;line-height:1.45}
+.panel-head>:not(h2){min-width:0}
+.metric,.history-stats>div,.af-summary>div{border-color:var(--ui-hairline);border-radius:var(--ui-radius)}
+.metric-value,.history-stats strong,.af-summary strong,.econ-result-intro h3{font-variant-numeric:tabular-nums}
+.metric-label,.history-stats span,.af-summary span{font-weight:550}
+.btn{min-height:38px;border-radius:var(--ui-radius-sm);font-weight:650;line-height:1.35}
+.btn-sm{min-height:34px}
+.btn:disabled,.econ-preset:disabled{cursor:not-allowed;opacity:.52}
+.btn:focus-visible,
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible{
+  outline:2px solid var(--ui-outline);
+  outline-offset:2px;
+}
+.input,textarea,select{min-width:0;max-width:100%;border-radius:var(--ui-radius-sm);color:var(--ui-text)}
+.input::placeholder,textarea::placeholder{color:#897D73}
+.field>label{line-height:1.4;font-weight:670}
+.field-help{line-height:1.55;color:#82766D}
+.status{line-height:1.4;border-radius:5px;padding:4px 8px}
+.form-message{line-height:1.6}
+.toolbar{min-width:0;gap:10px}
+.toolbar .left,.toolbar .right{min-width:0}
+.table-wrap,.econ-table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.table-wrap table{margin:0;min-width:600px}
+.table-wrap th{font-size:11px;font-weight:720;white-space:nowrap}
+.table-wrap td{line-height:1.5}
+.table-wrap tbody tr:last-child td{border-bottom:0}
+.table-empty{line-height:1.6}
+.table-wrap button{max-width:100%}
+.empty{line-height:1.65}
+.empty strong{margin-bottom:8px;font-size:14px}
+.usage-meter,.af-rank-track,.econ-bar-track,.econ-case-bar{background:#EDE6DE}
+.workspace-disclaimer,.history-notice,.af-warning,.econ-warning{line-height:1.65}
+.history-detail,.af-detail,.econ-result-body{min-width:0}
+.history-item-description p,.receipt-decision-text p,.af-observations li{font-size:12.5px;line-height:1.65}
+.history-item-description strong,.receipt-decision-text strong{font-size:13px}
+.receipt-result-explanation,.af-score p,.econ-chart-note{line-height:1.65}
+.receipt-context,.history-context{min-width:0}
+.econ-layout,.econ-bottom-grid,.history-layout,.af-layout,.receipts-layout,.estimates-layout{min-width:0}
+.econ-layout>*,.econ-bottom-grid>*,.history-layout>*,.af-layout>*,.receipts-layout>*,.estimates-layout>*{min-width:0}
+.econ-chart{max-width:100%}
+.global-foot{line-height:1.6}
+.toast{padding:12px 16px;line-height:1.5}
+.page-loading{
+  display:flex;align-items:center;gap:13px;min-height:180px;
+  color:#77695E;font-size:13px;line-height:1.6;
+}
+.page-loading-pulse{
+  width:13px;height:13px;flex:0 0 13px;
+  border:2px solid #E4D2C7;border-top-color:#BB080B;
+  border-radius:50%;animation:sr-loading-spin .9s linear infinite;
+}
+@keyframes sr-loading-spin{to{transform:rotate(360deg)}}
+
+::selection{background:#F1D5D2;color:#321B1B}
+
+/* Less decorative whitespace on laptop screens; data stays the priority. */
+@media(min-width:961px) and (max-width:1500px){
+  .content{padding:29px 28px 46px}
+  .topbar{padding-left:28px;padding-right:28px}
+}
+@media(max-width:1100px){
+  .page-head{gap:15px}
+  .page-head .page-description{max-width:610px}
+}
+/* The desktop side rail turns into an actual drawer at <=960px. */
+@media(max-width:960px){
+  body.menu-open{overflow:hidden}
+  .sidebar{max-width:calc(100vw - 35px)}
+  .content{padding:26px 20px 42px}
+  .topbar{padding-left:19px;padding-right:19px}
+  .topbar-left,.topbar-right{min-width:0}
+  .topbar-right{margin-left:auto}
+  #active-grant{min-width:0;max-width:min(190px,42vw)}
+  .menu-toggle{width:42px;height:42px;min-width:42px;display:grid;place-items:center;border-radius:7px}
+  .menu-toggle:hover{background:#F4EEE8}
+}
+@media(max-width:680px){
+  .content{padding:23px 13px 40px}
+  .page-head h1{font-size:24px;line-height:1.22}
+  .page-head{margin-bottom:19px}
+  .page-actions{gap:8px}
+  .page-actions .btn{min-height:41px}
+  .topbar{min-height:60px;padding:7px 12px}
+  .topbar-right{gap:7px}
+  #active-grant{font-size:16px;min-height:42px;max-width:min(158px,48vw)}
+  .menu-toggle{margin-left:-4px}
+  .panel-head{padding:15px 16px}
+  .panel-head h2{font-size:14px}
+  .panel-body{padding:16px}
+  .field .input,.field select,.field textarea,#estimate-search,#history-search,#history-status,
+  .receipt-row .input,.econ-field .input{font-size:16px;min-height:42px}
+  .field-help{font-size:11.5px}
+  .btn{min-height:42px}
+  .btn-sm{min-height:39px}
+  .toolbar .input,.toolbar select{min-height:42px}
+  .metric-grid,.history-stats,.af-summary{gap:9px}
+  .metric-label{font-size:11.5px}
+  .metric-value{font-size:21px}
+  .table-wrap{width:100%}
+  .history-detail-header>strong,.chosen-grant{overflow-wrap:anywhere}
+  .receipt-items-head .btn{min-height:40px}
+  .receipt-row:not(.receipt-columns) .input{font-size:16px;min-height:42px;height:42px}
+  .receipt-row .remove-item{height:42px}
+  .receipt-row .item-price,.receipt-row .item-qty{text-align:center}
+  .receipt-outcomes,.af-signal-grid{min-width:0}
+  .econ-presets .econ-preset{min-height:40px;font-size:12px}
+  .econ-kpis strong{overflow-wrap:anywhere}
+  .global-foot{font-size:11px;line-height:1.65}
+  .toast{left:13px;right:13px;bottom:14px;max-width:initial}
+}
+@media(max-width:380px){
+  .content{padding:18px 11px 34px}
+  .topbar{padding:7px 9px}
+  .demo-label{display:none}
+  #active-grant{max-width:50vw}
+  .metric-grid,.history-stats,.af-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .receipt-row:not(.receipt-columns){grid-template-columns:minmax(44px,.7fr) minmax(0,1.2fr) minmax(54px,.9fr) 34px}
+  .receipt-row .receipt-line-total{overflow-wrap:anywhere;white-space:normal}
+  .receipt-row .remove-item{width:34px}
+  .receipt-outcomes{grid-template-columns:1fr}
+}
+@media print{
+  :root{color-scheme:light}
+  html,body{background:#fff!important;overflow:visible}
+  .shell,.workspace{display:block!important;min-height:0}
+  .sidebar,.topbar,.global-foot,.mobile-scrim,.toast,
+  .page-actions,.form-actions,.receipt-action-row,.receipt-add-row,
+  .toolbar button,.history-toolbar-actions,.econ-preset,.econ-submit-row,
+  .af-config-actions,.receipt-context-link{display:none!important}
+  .content{padding:0!important;margin:0!important;max-width:none!important}
+  .panel,.metric,.history-stats>div,.af-summary>div{
+    box-shadow:none!important;background:#fff!important;border-color:#D5D0C9!important
+  }
+  .panel,.metric,.history-item,.receipt-decision-row{break-inside:avoid}
+  .table-wrap,.econ-table-scroll{overflow:visible!important}
+  .table-wrap table,.econ-table{min-width:0!important}
+  .econ-layout,.econ-bottom-grid,.af-layout,.history-layout,.receipts-layout{grid-template-columns:1fr!important}
+  .page-head{margin-bottom:15px}
+  .page-head h1{color:#111!important}
+  .econ-chart{break-inside:avoid}
+}
+@media(prefers-reduced-motion:reduce){
+  *{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}
+}
