@@ -40,7 +40,7 @@ def assert_layout(page, label: str):
         page: document.querySelector('#page').scrollWidth,
         pageClient: document.querySelector('#page').clientWidth
     })""")
-    if result["doc"] > result["width"] + 2:
+    if result["doc"] > result["width"] + 2 or result["page"] > result["pageClient"] + 2:
         offenders = page.evaluate("""() => [...document.querySelectorAll('body *')]
             .map(el => ({tag: el.tagName, id: el.id, klass: String(el.className || '').slice(0,80),
                            right: Math.round(el.getBoundingClientRect().right)}))
