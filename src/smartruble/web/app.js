@@ -337,14 +337,15 @@
     var qty=item.qty==null?1:item.qty;
     var price=item.price==null?"":item.price;
     return '<div class="receipt-row" data-row="'+key+'">'+
-      '<input class="input item-name" aria-label="Название товара" placeholder="Название товара или услуги" maxlength="250" required value="'+esc(name)+'">'+
+      '<input class="input item-name" aria-label="Название товара" placeholder="Название товара или услуги" maxlength="250" aria-required="true" value="'+esc(name)+'">'+
       '<span class="receipt-mobile-label qty-label" aria-hidden="true">Кол-во</span>'+
       '<span class="receipt-mobile-label price-label" aria-hidden="true">Цена, ₽</span>'+
       '<span class="receipt-mobile-label total-label" aria-hidden="true">Сумма</span>'+
-      '<input class="input item-qty" type="text" inputmode="decimal" maxlength="24" aria-label="Количество" required value="'+esc(qty)+'">'+
-      '<input class="input item-price" type="text" inputmode="decimal" maxlength="24" aria-label="Цена за единицу, ₽" required value="'+esc(price)+'">'+
+      '<input class="input item-qty" type="text" inputmode="decimal" maxlength="24" aria-label="Количество" aria-required="true" value="'+esc(qty)+'">'+
+      '<input class="input item-price" type="text" inputmode="decimal" maxlength="24" aria-label="Цена за единицу, ₽" aria-required="true" value="'+esc(price)+'">'+
       '<output class="receipt-line-total" aria-label="Сумма позиции">—</output>'+
-      '<button class="remove-item" type="button" title="Удалить позицию" aria-label="Удалить позицию">×</button></div>';
+      '<button class="remove-item" type="button" title="Удалить позицию" aria-label="Удалить позицию">×</button>'+ 
+      '<div class="receipt-row-error" role="status" aria-live="polite"></div></div>';
   }
   function showReceipts(){
     var estimate=current();
@@ -365,7 +366,7 @@
         '<div class="receipt-document-head"><div><div class="receipt-step">ШАГ 01 / 02</div>'+
         '<h3>Данные покупки</h3></div><span class="receipt-demo-chip">Демо</span></div>'+
         '<div class="field receipt-merchant-field"><label for="merchant">Продавец</label>'+
-        '<input class="input" id="merchant" placeholder="Название организации или магазина" maxlength="200" required autocomplete="off">'+
+        '<input class="input" id="merchant" placeholder="Название организации или магазина" maxlength="200" aria-required="true" autocomplete="off">'+
         '<div class="field-help">Данные используются только для демонстрационной проверки.</div></div>'+
         '<div class="receipt-items-head"><div><h3>Состав покупки</h3><p>Укажите товар, количество и цену обычными цифрами. Копейки можно вводить через запятую; знак ₽ не нужен.</p></div>'+
         '<button class="btn secondary btn-sm" type="button" id="receipt-example">Заполнить пример</button></div>'+
@@ -385,6 +386,7 @@
     var form=$("receipt-form");
     var locked=false;
     var draftId=null;
+    var showReceiptErrors=false;
 
     function formItems(){
       return Array.from($("receipt-lines").querySelectorAll(".receipt-row")).map(function(row){
@@ -401,6 +403,12 @@
       Array.from(rows).forEach(function(row,i){
         row.querySelector(".receipt-line-total").textContent=
           result.amounts[i]==null?"—":cash(result.amounts[i]);
+        ["name","qty","price"].forEach(function(key){
+          row.querySelector(".item-"+key).removeAttribute("aria-invalid");
+        });
+        var problem=showReceiptErrors&&result.errors.find(function(err){return err.index===i;});
+        row.querySelector(".receipt-row-error").textContent=problem?problem.message:"";
+        if(problem)row.querySelector(".item-"+problem.field).setAttribute("aria-invalid","true");
       });
       if(!locked)$("add-item").disabled=rows.length>=100;
     }
@@ -417,6 +425,7 @@
     function resetReceipt(items,merchant){
       setLocked(false);
       draftId=null;
+      showReceiptErrors=false;
       $("merchant").value=merchant||"";
       $("receipt-lines").innerHTML=items.map(receiptRow).join("");
       $("receipt-result").innerHTML=resultPlaceholder;
@@ -453,8 +462,18 @@
       var merchant=$("merchant").value.trim();
       var raw=formItems();
       var check=window.SRReceipt.inspect(raw);
-      if(!merchant){say("receipt-msg","Укажите продавца.",true);return;}
-      if(!check.valid){say("receipt-msg",check.message,true);return;}
+      if(!merchant){say("receipt-msg","Укажите продавца.",true);$("merchant").focus();return;}
+      if(!check.valid){
+        showReceiptErrors=true;
+        refreshReceiptTotal();
+        say("receipt-msg",check.message,true);
+        var problem=check.errors[0];
+        if(problem){
+          var badRow=$("receipt-lines").querySelectorAll(".receipt-row")[problem.index];
+          if(badRow)badRow.querySelector(".item-"+problem.field).focus();
+        }
+        return;
+      }
       var payload={id:draftId||("demo-"+(typeof crypto!=="undefined"&&crypto.randomUUID?
         crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2))),
         merchant:merchant,items:raw.map(function(x){return {name:x.name,qty:Number(window.SRReceipt.normalizeDecimal(x.qty)),price:Number(window.SRReceipt.normalizeDecimal(x.price))};})};
