@@ -4,6 +4,40 @@
  */
 (function(root){
   "use strict";
+  // Text inputs avoid locale-specific browser number widgets. Strictly accept
+  // ordinary digits, spaces for thousands, and comma or dot as the decimal mark.
+  function parseLocaleNumber(raw){
+    var value=String(raw==null?"":raw).trim().replace(/[\\s\\u00a0\\u202f]/g,"");
+    if(!/^\\d+(?:[.,]\\d+)?$/.test(value))return null;
+    var number=Number(value.replace(",","."));
+    return Number.isFinite(number)?number:null;
+  }
+  var INPUT_FIELDS=[
+    {id:"econ-count",min:1,max:100000000,integer:true},
+    {id:"econ-before",min:0.01,max:100000},
+    {id:"econ-after",min:0,max:100000},
+    {id:"econ-hour",min:0.01,max:100000000},
+    {id:"econ-maint",min:0,max:100000000000},
+    {id:"econ-dev",min:0,max:100000000000}
+  ];
+  function validateAssumptions(raw){
+    var values={},errors=[];
+    INPUT_FIELDS.forEach(function(field){
+      var value=parseLocaleNumber(raw[field.id]);
+      if(value==null || (field.integer&&!Number.isInteger(value)) ||
+         value<field.min || value>field.max){
+        var min=new Intl.NumberFormat("ru-RU").format(field.min);
+        var max=new Intl.NumberFormat("ru-RU").format(field.max);
+        errors.push({id:field.id,message:(field.integer?"Введите целое число":"Введите число")+" от "+min+" до "+max+" (без ₽)."});
+      }else{
+        values[field.id]=value;
+      }
+    });
+    if(!errors.length && values["econ-after"]>values["econ-before"]){
+      errors.push({id:"econ-after",message:"Время с системой не должно превышать время ручной проверки."});
+    }
+    return {valid:errors.length===0,values:values,errors:errors};
+  }
   function volumes(raw){
     var n=Number(raw);
     if(!Number.isInteger(n)||n<1||n>100000000)throw Error("Некорректное число отчётов");
@@ -42,5 +76,6 @@
     if(!Number.isFinite(n)||!Number.isFinite(den)||den<=0)return 0;
     return Math.max(0,Math.min(100,Math.round(Math.abs(n)/den*1000)/10));
   }
-  root.SREconomics={volumes:volumes,projection:projection,chartLines:chartLines,barWidth:barWidth};
+  root.SREconomics={volumes:volumes,projection:projection,chartLines:chartLines,barWidth:barWidth,
+    parseLocaleNumber:parseLocaleNumber,validateAssumptions:validateAssumptions};
 })(typeof window!=="undefined"?window:globalThis);
