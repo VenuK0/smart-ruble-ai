@@ -19,15 +19,28 @@
     }
     return total;
   }
-  function filter(entries,query,status){
+  // Readable numbers refer only to the current (up to 100) entries.
+  // The immutable receipt_id is still used for selection, audit and CSV.
+  function shortLabels(entries){
+    var list=Array.isArray(entries)?entries:[];
+    var labels=Object.create(null);
+    list.forEach(function(entry,index){
+      var id=entry&&entry.record&&entry.record.receipt_id;
+      if(typeof id==="string"&&id){
+        labels[id]="ЧЕК-"+String(list.length-index).padStart(4,"0");
+      }
+    });
+    return labels;
+  }
+  function filter(entries,query,status,shortNumbers){
     var needle=String(query||"").trim().toLocaleLowerCase("ru-RU");
     return (entries||[]).filter(function(entry){
       var r=(entry||{}).record||{};
       if(status&&r.status!==status)return false;
       if(!needle)return true;
-      var text=[r.receipt_id,r.merchant].concat((r.items||[]).map(function(x){return x.name;}));
+      var text=[r.receipt_id,r.merchant,shortNumbers&&shortNumbers[r.receipt_id]].concat((r.items||[]).map(function(x){return x.name;}));
       return text.some(function(value){return String(value==null?"":value).toLocaleLowerCase("ru-RU").includes(needle);});
     });
   }
-  root.SRHistory={summarize:summarize,filter:filter};
+  root.SRHistory={summarize:summarize,filter:filter,shortLabels:shortLabels};
 })(typeof window!=="undefined"?window:globalThis);
