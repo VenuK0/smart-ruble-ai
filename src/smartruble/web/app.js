@@ -23,7 +23,7 @@
   function empty(title,help){return '<div class="empty"><strong>'+title+'</strong>'+help+'</div>';}
   function notice(){return '<div class="inline-note"><strong>Демонстрационная версия.</strong> Все операции выполняются на синтетических данных. Средства не списываются, интеграции с платёжными системами нет.</div>';}
   function table(head,rows,emptyText){return '<div class="table-wrap" tabindex="0" role="region" aria-label="Таблица данных с горизонтальной прокруткой"><table><thead><tr>'+head.map(function(h){return '<th'+(h.num?' class="number"':'')+'>'+esc(h.title||h)+'</th>';}).join("")+'</tr></thead><tbody>'+(rows.length?rows.join(""):'<tr><td colspan="'+head.length+'" class="table-empty">'+esc(emptyText||"Нет данных")+'</td></tr>')+'</tbody></table></div><div class="table-swipe-hint" aria-hidden="true">Проведите по таблице влево, чтобы увидеть остальные столбцы.</div>';}
-  function tr(cells){return '<tr>'+cells.map(function(v){return '<td>'+v+'</td>';}).join("")+'</tr>';}
+  function tr(cells,rowClass){return '<tr'+(rowClass?' class="'+esc(rowClass)+'"':"")+'>'+cells.map(function(v){return '<td>'+v+'</td>';}).join("")+'</tr>';}
   function field(id,label,value,type){return '<div class="field"><label for="'+id+'">'+label+'</label><input class="input" id="'+id+'" type="'+(type||"text")+'" value="'+esc(value)+'"></div>';}
   function formMessage(id){return '<div class="form-message" role="status" aria-live="polite" id="'+id+'"></div>';}
   function say(id,msg,error){var e=$(id);if(e){e.textContent=msg;e.className="form-message"+(error?" error":"");}}
@@ -135,6 +135,20 @@
       while(used.has(base+"-"+n))n++;
       return base+"-"+n;
     }
+    var estimateCategories=window.SREstimate.categories;
+    function estimateRow(row){
+      row=row||{category:"",amount:""};
+      return '<div class="estimate-editor-row">'+
+        '<label class="estimate-row-field"><span>Категория расходов</span>'+
+          '<select class="input estimate-category" aria-label="Категория расходов" aria-required="true">'+
+            '<option value="">Выберите статью</option>'+
+            estimateCategories.map(function(cat){return '<option value="'+cat.id+'"'+(cat.id===row.category?' selected':'')+'>'+esc(cat.name)+'</option>';}).join("")+
+          '</select></label>'+
+        '<label class="estimate-row-field"><span>Лимит, ₽</span>'+
+          '<input class="input estimate-amount" type="text" inputmode="decimal" autocomplete="off" maxlength="24" placeholder="Например, 50000" aria-label="Лимит статьи в рублях" aria-required="true" value="'+esc(row.amount||"")+'"></label>'+
+        '<button type="button" class="estimate-remove-row" aria-label="Удалить статью" title="Удалить статью">×</button>'+ 
+        '<div class="estimate-row-error" role="status" aria-live="polite"></div></div>';
+    }
     root.innerHTML=section("Сметы и лимиты","Реестр смет, остатки средств и статьи расходов.")+
       '<div class="estimates-layout">'+
       panel("Реестр смет",contracts.length?
@@ -148,12 +162,25 @@
         '<div><h3>Смет пока нет</h3><p>Создайте первую смету в форме ниже. После этого здесь появятся лимиты, остатки и история проверок.</p></div></div>')+
       (estimate?'<div class="stack detail-stack" id="estimate-details"></div>':'')+
       panel("Новая смета",'<div class="panel-body estimate-form-body"><form id="estimate-form">'+
-        '<div class="estimate-form-grid"><div class="estimate-form-primary">'+
+        '<div class="estimate-editor-intro"><div class="estimate-editor-id">'+
         field("grant-name","Номер сметы",suggestedGrantId())+
-        '<p class="field-help">Предложен свободный номер. При необходимости измените его.</p></div>'+
-        '<div class="field"><label for="estimate-text">Статьи и лимиты</label>'+
-        '<textarea id="estimate-text" rows="5" maxlength="30000" required>Расходные материалы — 50 000 ₽\nОборудование — 120 000 ₽\nУслуги хостинга — 10 000 ₽</textarea>'+
-        '<div class="field-help">Каждая статья — отдельной строкой. Нераспознанные записи требуют ручной проверки.</div></div></div>'+
+        '<p class="field-help">Номер может содержать обычные буквы, цифры и дефис.</p></div>'+
+        '<p class="estimate-editor-prompt">Выберите категории, затем укажите лимиты обычными числами. Тире и символ ₽ вводить не нужно.</p></div>'+
+        '<div class="estimate-editor-heading"><div><h3>Статьи расходов</h3>'+
+        '<p>Одинаковые категории суммируются. Можно использовать запятую для копеек.</p></div>'+
+        '<span class="estimate-line-count" id="estimate-line-count">Статей: 1</span></div>'+
+        '<div id="estimate-rows">'+estimateRow({category:"",amount:""})+'</div>'+
+        '<div class="estimate-editor-controls"><button class="btn secondary btn-sm" id="estimate-add" type="button">+ Добавить статью</button>'+
+        '<span>Не более 50 строк</span></div>'+
+        '<div class="estimate-editor-total"><div><span>Общий лимит сметы</span>'+
+        '<small>Сумма введённых корректных строк</small></div>'+
+        '<output id="estimate-total" aria-live="polite">0 ₽</output></div>'+
+        '<details class="estimate-import"><summary>Есть текстовая смета? Импортировать строки</summary>'+
+        '<div class="estimate-import-body"><label for="estimate-text">Вставьте текст сметы</label>'+
+        '<textarea id="estimate-text" rows="4" maxlength="30000" placeholder="Материалы - 50000&#10;Оборудование: 120000&#10;Услуги - 10000"></textarea>'+
+        '<p>Подойдут обычный дефис <code>-</code> или двоеточие <code>:</code>. Знак ₽ и длинное тире необязательны.</p>'+
+        '<button class="btn secondary btn-sm" type="button" id="estimate-import-btn">Разобрать текст в таблицу</button>'+
+        formMessage("estimate-import-msg")+'</div></details>'+
         '<div class="form-actions"><button class="btn primary" type="submit">Создать смету</button>'+
         '<button class="btn secondary" type="button" id="new-example">Заполнить пример</button></div>'+
         formMessage("estimate-msg")+'</form></div>')+
@@ -178,25 +205,112 @@
         filtered.map(function(x){var limit=sum(x.limits),spent=sum(x.spent);return [x.grant_id,limit,spent,Math.max(0,limit-spent),x.transactions];}));
       };
     }
-    $("estimate-form").onsubmit=async function(e){
-      e.preventDefault();
-      var id=$("grant-name").value.trim();
-      if(!id){say("estimate-msg","Введите номер сметы",true);return;}
-      var button=$("estimate-form").querySelector("button[type=submit]");
-      button.disabled=true;
-      try{
-        var x=await api("/contracts","POST",{grant_id:id,text:$("estimate-text").value});
-        active=x.grant_id;
-        sessionStorage.setItem("sr-active-grant",active);
-        await reloadContracts();
-        toast(x.unparsed.length?"Смета создана. Требуют проверки строк: "+x.unparsed.length:"Смета создана");
-      }catch(err){say("estimate-msg",err.message,true);}
-      finally{button.disabled=false;}
+    function estimateRows(){
+      return Array.from($("estimate-rows").querySelectorAll(".estimate-editor-row")).map(function(row){
+        return {category:row.querySelector(".estimate-category").value,
+          amount:row.querySelector(".estimate-amount").value};
+      });
+    }
+    var showEstimateErrors=false;
+    function setEstimateRows(rows){
+      showEstimateErrors=false;
+      $("estimate-rows").innerHTML=rows.map(estimateRow).join("");
+      updateEstimateEditor();
+    }
+    function updateEstimateEditor(){
+      var rows=estimateRows(),result=window.SREstimate.inspect(rows);
+      $("estimate-total").textContent=window.SREstimate.formatRub(result.totalCents);
+      $("estimate-line-count").textContent="Статей: "+number(rows.length);
+      $("estimate-add").disabled=rows.length>=window.SREstimate.maxRows;
+      Array.from($("estimate-rows").querySelectorAll(".estimate-editor-row")).forEach(function(row,i){
+        row.querySelector(".estimate-remove-row").disabled=rows.length<=1;
+        var category=row.querySelector(".estimate-category");
+        var amount=row.querySelector(".estimate-amount");
+        var message=row.querySelector(".estimate-row-error");
+        category.removeAttribute("aria-invalid");
+        amount.removeAttribute("aria-invalid");
+        var problem=showEstimateErrors&&result.errors.find(function(e){return e.index===i;});
+        message.textContent=problem?problem.message:"";
+        if(problem){
+          var categoryValid=estimateCategories.some(function(cat){return cat.id===rows[i].category;});
+          (categoryValid?amount:category).setAttribute("aria-invalid","true");
+        }
+      });
+      return result;
+    }
+    $("estimate-rows").addEventListener("input",function(){
+      updateEstimateEditor();
+      say("estimate-msg","");
+    });
+    $("estimate-rows").addEventListener("change",function(){
+      updateEstimateEditor();
+      say("estimate-msg","");
+    });
+    $("estimate-rows").addEventListener("click",function(e){
+      var btn=e.target.closest(".estimate-remove-row");
+      if(!btn||estimateRows().length<=1)return;
+      btn.closest(".estimate-editor-row").remove();
+      updateEstimateEditor();
+      say("estimate-msg","");
+    });
+    $("estimate-add").onclick=function(){
+      if(estimateRows().length>=window.SREstimate.maxRows)return;
+      $("estimate-rows").insertAdjacentHTML("beforeend",estimateRow({category:"",amount:""}));
+      updateEstimateEditor();
+      var last=$("estimate-rows").lastElementChild;
+      if(last)last.querySelector(".estimate-category").focus();
     };
     $("new-example").onclick=function(){
       $("grant-name").value=suggestedGrantId();
-      $("estimate-text").value="Расходные материалы — 50 000 ₽\nОборудование — 120 000 ₽\nУслуги хостинга — 10 000 ₽";
+      setEstimateRows([
+        {category:"consumables",amount:"50000"},
+        {category:"equipment",amount:"120000"},
+        {category:"services",amount:"10000"}
+      ]);
+      say("estimate-msg","");
     };
+    $("estimate-import-btn").onclick=function(){
+      var result=window.SREstimate.importText($("estimate-text").value);
+      if(!result.valid){say("estimate-import-msg",result.message,true);return;}
+      setEstimateRows(result.rows);
+      say("estimate-import-msg","Импортировано строк: "+number(result.rows.length)+". Проверьте категории и суммы перед созданием.");
+      say("estimate-msg","");
+    };
+    $("estimate-form").onsubmit=async function(e){
+      e.preventDefault();
+      var id=$("grant-name").value.trim();
+      if(!id){say("estimate-msg","Введите номер сметы.",true);$("grant-name").focus();return;}
+      if(id.length>80){say("estimate-msg","Номер сметы не должен превышать 80 символов.",true);return;}
+      showEstimateErrors=true;
+      var result=updateEstimateEditor();
+      if(!result.valid){
+        say("estimate-msg",result.message,true);
+        var first=result.errors[0];
+        if(first){
+          var row=$("estimate-rows").querySelectorAll(".estimate-editor-row")[first.index];
+          var input=row.querySelector('[aria-invalid="true"]');
+          if(input)input.focus();
+        }
+        return;
+      }
+      var button=$("estimate-form").querySelector("button[type=submit]");
+      button.disabled=true;
+      try{
+        // Existing /contracts API accepts structured information as text;
+        // generation happens here so users never type ₽ or a special dash.
+        var contractText=result.lines.join("\n");
+        var x=await api("/contracts","POST",{grant_id:id,text:contractText});
+        if(x.unparsed && x.unparsed.length){
+          throw Error("Сервер не смог распознать все статьи. Проверьте данные и попробуйте снова.");
+        }
+        active=x.grant_id;
+        sessionStorage.setItem("sr-active-grant",active);
+        await reloadContracts();
+        toast("Смета создана: "+window.SREstimate.formatRub(result.totalCents));
+      }catch(err){say("estimate-msg",err.message,true);}
+      finally{button.disabled=false;}
+    };
+    updateEstimateEditor();
     if(estimate){
       var total=sum(estimate.limits),spent=sum(estimate.spent);
       var rows=Object.keys(estimate.limits).map(function(cat){
@@ -223,14 +337,15 @@
     var qty=item.qty==null?1:item.qty;
     var price=item.price==null?"":item.price;
     return '<div class="receipt-row" data-row="'+key+'">'+
-      '<input class="input item-name" aria-label="Название товара" placeholder="Название товара или услуги" maxlength="250" required value="'+esc(name)+'">'+
+      '<input class="input item-name" aria-label="Название товара" placeholder="Название товара или услуги" maxlength="250" aria-required="true" value="'+esc(name)+'">'+
       '<span class="receipt-mobile-label qty-label" aria-hidden="true">Кол-во</span>'+
       '<span class="receipt-mobile-label price-label" aria-hidden="true">Цена, ₽</span>'+
       '<span class="receipt-mobile-label total-label" aria-hidden="true">Сумма</span>'+
-      '<input class="input item-qty" type="number" min="0.01" max="100000" step="any" inputmode="decimal" aria-label="Количество" required value="'+esc(qty)+'">'+
-      '<input class="input item-price" type="number" min="0.01" max="1000000000" step="0.01" inputmode="decimal" aria-label="Цена за единицу, ₽" required value="'+esc(price)+'">'+
+      '<input class="input item-qty" type="text" inputmode="decimal" maxlength="24" aria-label="Количество" aria-required="true" value="'+esc(qty)+'">'+
+      '<input class="input item-price" type="text" inputmode="decimal" maxlength="24" aria-label="Цена за единицу, ₽" aria-required="true" value="'+esc(price)+'">'+
       '<output class="receipt-line-total" aria-label="Сумма позиции">—</output>'+
-      '<button class="remove-item" type="button" title="Удалить позицию" aria-label="Удалить позицию">×</button></div>';
+      '<button class="remove-item" type="button" title="Удалить позицию" aria-label="Удалить позицию">×</button>'+ 
+      '<div class="receipt-row-error" role="status" aria-live="polite"></div></div>';
   }
   function showReceipts(){
     var estimate=current();
@@ -251,9 +366,9 @@
         '<div class="receipt-document-head"><div><div class="receipt-step">ШАГ 01 / 02</div>'+
         '<h3>Данные покупки</h3></div><span class="receipt-demo-chip">Демо</span></div>'+
         '<div class="field receipt-merchant-field"><label for="merchant">Продавец</label>'+
-        '<input class="input" id="merchant" placeholder="Название организации или магазина" maxlength="200" required autocomplete="off">'+
+        '<input class="input" id="merchant" placeholder="Название организации или магазина" maxlength="200" aria-required="true" autocomplete="off">'+
         '<div class="field-help">Данные используются только для демонстрационной проверки.</div></div>'+
-        '<div class="receipt-items-head"><div><h3>Состав покупки</h3><p>Укажите наименование, количество и цену каждой позиции.</p></div>'+
+        '<div class="receipt-items-head"><div><h3>Состав покупки</h3><p>Укажите товар, количество и цену обычными цифрами. Копейки можно вводить через запятую; знак ₽ не нужен.</p></div>'+
         '<button class="btn secondary btn-sm" type="button" id="receipt-example">Заполнить пример</button></div>'+
         '<div class="receipt-row receipt-columns" aria-hidden="true"><span>Наименование</span><span>Кол-во</span><span>Цена, ₽</span><span>Сумма</span><span></span></div>'+
         '<div id="receipt-lines">'+receiptRow({name:"",qty:1,price:""})+'</div>'+
@@ -271,6 +386,7 @@
     var form=$("receipt-form");
     var locked=false;
     var draftId=null;
+    var showReceiptErrors=false;
 
     function formItems(){
       return Array.from($("receipt-lines").querySelectorAll(".receipt-row")).map(function(row){
@@ -287,6 +403,12 @@
       Array.from(rows).forEach(function(row,i){
         row.querySelector(".receipt-line-total").textContent=
           result.amounts[i]==null?"—":cash(result.amounts[i]);
+        ["name","qty","price"].forEach(function(key){
+          row.querySelector(".item-"+key).removeAttribute("aria-invalid");
+        });
+        var problem=showReceiptErrors&&result.errors.find(function(err){return err.index===i;});
+        row.querySelector(".receipt-row-error").textContent=problem?problem.message:"";
+        if(problem)row.querySelector(".item-"+problem.field).setAttribute("aria-invalid","true");
       });
       if(!locked)$("add-item").disabled=rows.length>=100;
     }
@@ -303,6 +425,7 @@
     function resetReceipt(items,merchant){
       setLocked(false);
       draftId=null;
+      showReceiptErrors=false;
       $("merchant").value=merchant||"";
       $("receipt-lines").innerHTML=items.map(receiptRow).join("");
       $("receipt-result").innerHTML=resultPlaceholder;
@@ -339,11 +462,21 @@
       var merchant=$("merchant").value.trim();
       var raw=formItems();
       var check=window.SRReceipt.inspect(raw);
-      if(!merchant){say("receipt-msg","Укажите продавца.",true);return;}
-      if(!check.valid){say("receipt-msg",check.message,true);return;}
+      if(!merchant){say("receipt-msg","Укажите продавца.",true);$("merchant").focus();return;}
+      if(!check.valid){
+        showReceiptErrors=true;
+        refreshReceiptTotal();
+        say("receipt-msg",check.message,true);
+        var problem=check.errors[0];
+        if(problem){
+          var badRow=$("receipt-lines").querySelectorAll(".receipt-row")[problem.index];
+          if(badRow)badRow.querySelector(".item-"+problem.field).focus();
+        }
+        return;
+      }
       var payload={id:draftId||("demo-"+(typeof crypto!=="undefined"&&crypto.randomUUID?
         crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2))),
-        merchant:merchant,items:raw.map(function(x){return {name:x.name,qty:Number(x.qty),price:Number(x.price)};})};
+        merchant:merchant,items:raw.map(function(x){return {name:x.name,qty:Number(window.SRReceipt.normalizeDecimal(x.qty)),price:Number(window.SRReceipt.normalizeDecimal(x.price))};})};
       draftId=payload.id;
       var submit=$("receipt-submit");
       submit.disabled=true;submit.textContent="Проверяем…";
@@ -422,6 +555,7 @@
 
     var entries=[];
     var matched=[];
+    var shortNumbers=Object.create(null);
     var selectedId="";
 
     function detail(entry){
@@ -438,8 +572,10 @@
           '<div class="history-item-values">'+badge(item.decision)+'<strong>'+cash(item.amount)+'</strong></div></div>';
       }).join("");
       $("history-detail").innerHTML=
-        '<div class="history-detail-header"><span class="history-detail-label">Номер чека</span>'+
-        '<strong>'+esc(r.receipt_id)+'</strong><div>'+badge(r.status)+'</div></div>'+
+        '<div class="history-detail-header"><span class="history-detail-label">Номер в текущем журнале</span>'+
+        '<strong>'+esc(shortNumbers[r.receipt_id]||"Чек")+'</strong>'+
+        '<div class="history-original-id"><span>Исходный ID:</span><code>'+esc(r.receipt_id)+'</code></div>'+
+        '<div>'+badge(r.status)+'</div></div>'+
         '<dl class="history-facts"><dt>Дата</dt><dd>'+dateLabel(entry.ts)+'</dd>'+
         '<dt>Продавец</dt><dd>'+esc(r.merchant)+'</dd>'+
         '<dt>Одобрено</dt><dd>'+cash(r.approved)+'</dd>'+
@@ -453,7 +589,7 @@
     function display(){
       var q=$("history-search").value;
       var status=$("history-status").value;
-      matched=window.SRHistory.filter(entries,q,status);
+      matched=window.SRHistory.filter(entries,q,status,shortNumbers);
       var totals=window.SRHistory.summarize(matched);
       $("history-stat-count").textContent=number(totals.count);
       $("history-stat-approved").textContent=cash(totals.approved);
@@ -467,15 +603,16 @@
         var r=entry.record;
         return tr([
           dateLabel(entry.ts),
-          '<button type="button" class="history-view" data-index="'+i+'" aria-pressed="'+(r.receipt_id===selectedId?'true':'false')+'" aria-label="Подробнее о чеке '+esc(r.receipt_id)+'">'+esc(r.receipt_id)+'</button>',
+          '<span class="history-view-wrap"><button type="button" class="history-view" data-index="'+i+'" aria-pressed="'+(r.receipt_id===selectedId?'true':'false')+'" aria-label="Открыть '+esc(shortNumbers[r.receipt_id]||r.receipt_id)+'">'+esc(shortNumbers[r.receipt_id]||r.receipt_id)+'</button>'+
+          (r.receipt_id===selectedId?'<small class="history-selected-note">Выбран</small>':'')+'</span>',
           '<span class="history-merchant">'+esc(r.merchant)+'</span>',
           badge(r.status),
           '<strong class="history-amount">'+cash(Number(r.approved||0)+Number(r.review||0)+Number(r.personal_pay||0))+'</strong>'
-        ]);
+        ],r.receipt_id===selectedId?"history-selected-row":"");
       });
       $("history-table").innerHTML=table(["Дата","Чек","Продавец","Решение",{title:"Сумма",num:true}],rows,
         entries.length?"Ничего не найдено. Попробуйте изменить фильтр.":"Здесь пока нет операций. Проверьте первый чек.");
-      $("history-count").textContent="Показано "+number(matched.length)+" из "+number(entries.length)+" последних записей. Экспорт учитывает фильтры.";
+      $("history-count").textContent="Показано "+number(matched.length)+" из "+number(entries.length)+" последних записей. Короткие номера действуют в текущем журнале; CSV содержит исходные ID.";
       detail(matched.find(function(e){return e.record.receipt_id===selectedId;})||null);
     }
 
@@ -486,6 +623,7 @@
       try{
         var result=await api("/contracts/"+encodeURIComponent(active)+"/history");
         entries=(result.entries||[]).slice().reverse();
+        shortNumbers=window.SRHistory.shortLabels(entries);
         $("audit-state").textContent=result.chain_valid?
           "Цепочка записей проверена":"Нарушена целостность журнала";
         $("audit-state").className="history-audit "+(result.chain_valid?"ok":"bad");
@@ -511,6 +649,11 @@
       if(!Number.isInteger(index)||index<0||index>=matched.length)return;
       selectedId=matched[index].record.receipt_id;
       display();
+      var selectedButton=$("history-table").querySelector('.history-view[aria-pressed="true"]');
+      if(selectedButton)selectedButton.focus({preventScroll:true});
+      if(window.matchMedia&&window.matchMedia("(max-width: 1600px)").matches){
+        $("history-detail").scrollIntoView({behavior:"smooth",block:"start"});
+      }
     };
     $("history-export").onclick=function(){
       if(!matched.length){toast("Нет операций для выгрузки",true);return;}
@@ -538,6 +681,11 @@
     var selected="";
     var sample=null;
     function percentText(value){return number(window.SRAntifraud.percent(value))+" %";}
+    function peerValue(key,value){
+      if(key==="night_share"||key==="round_large_share"||key==="largest_student_share")return percentText(value);
+      if(key==="average_amount_rub")return cash(value);
+      return number(value);
+    }
     function renderDetail(merchant){
       var item=(sample.top||[]).find(function(x){return x.merchant===merchant;});
       var target=$("af-detail");
@@ -548,22 +696,35 @@
       }
       var s=item.signals||{};
       var descriptions=window.SRAntifraud.notes(s);
+      var highlights=window.SRAntifraud.comparisonHighlights(item);
+      var peers=item.comparison&&item.comparison.signals;
+      var peerCount=item.comparison&&Number(item.comparison.merchant_count);
+      var rank=(sample.top||[]).findIndex(function(x){return x.merchant===merchant;})+1;
       var signalData=[
-        {caption:"Операций",value:number(s.transaction_count),help:"Число транзакций продавца"},
-        {caption:"Получателей",value:number(s.student_count),help:"Различные получатели средств"},
-        {caption:"Крупные круглые суммы",value:percentText(s.round_large_share),help:"Доля операций на сумму от 10 000 ₽, кратную 1 000 ₽"},
-        {caption:"Ночные операции",value:percentText(s.night_share),help:"Доля операций с 22:00 до 05:59"},
-        {caption:"Доля одного получателя",value:percentText(s.largest_student_share),help:"Максимальная доля одного получателя"},
-        {caption:"Средняя операция",value:cash(s.average_amount_rub),help:"Средняя сумма в синтетической выборке"}
+        {key:"transaction_count",caption:"Операций",value:number(s.transaction_count),help:"Число транзакций продавца"},
+        {key:"student_count",caption:"Получателей",value:number(s.student_count),help:"Различные получатели средств"},
+        {key:"round_large_share",caption:"Крупные круглые суммы",value:percentText(s.round_large_share),help:"Доля операций на сумму от 10 000 ₽, кратную 1 000 ₽"},
+        {key:"night_share",caption:"Ночные операции",value:percentText(s.night_share),help:"Доля операций с 22:00 до 05:59"},
+        {key:"largest_student_share",caption:"Доля одного получателя",value:percentText(s.largest_student_share),help:"Максимальная доля одного получателя"},
+        {key:"average_amount_rub",caption:"Средняя операция",value:cash(s.average_amount_rub),help:"Средняя сумма в синтетической выборке"}
       ];
       target.innerHTML='<div class="af-detail-heading"><div><span class="af-eyebrow">КАРТОЧКА ПРОДАВЦА</span>'+
         '<h3>'+esc(item.merchant)+'</h3></div><span class="af-groundtruth '+(item.planted_anomaly?'flag':'normal')+'">'+
         (item.planted_anomaly?'Заложен тестовый сценарий':'Обычный тестовый сценарий')+'</span></div>'+
-        '<div class="af-score"><div><span>Балльная оценка модели</span><strong>'+esc(Number(item.anomaly_score).toFixed(4).replace(".",","))+'</strong></div>'+
-        '<p>Относительная оценка Isolation Forest. Это не вероятность мошенничества.</p></div>'+
+        '<div class="af-score"><div><span>Балльная оценка · не процент</span><strong>'+esc(Number(item.anomaly_score).toFixed(4).replace(".",","))+'</strong>'+
+        '<small>Место №'+number(rank)+' в топ-'+number((sample.top||[]).length)+' текущего набора</small></div>'+
+        '<p>Оценка Isolation Forest служит для ранжирования необычности. Она не является процентом риска или вероятностью мошенничества.</p></div>'+
+        (peers&&peerCount>0?'<p class="af-comparison-context">Сравнение со средними показателями остальных '+number(peerCount)+' продавцов (без '+esc(merchant)+'). Среднее считается по продавцам, а не по отдельным транзакциям.</p>':
+          '<p class="af-comparison-context">Для этого набора сравнение с другими продавцами недоступно.</p>')+
         '<div class="af-signal-grid">'+signalData.map(function(x){
-          return '<div class="af-signal"><span>'+x.caption+'</span><strong>'+x.value+'</strong><small>'+x.help+'</small></div>';
+          return '<div class="af-signal"><span>'+x.caption+'</span><strong>'+x.value+'</strong><small>'+x.help+'</small>'+
+            (peers&&peerCount>0&&Number.isFinite(Number(peers[x.key]))?
+              '<div class="af-signal-peer"><span>В среднем у остальных</span><b>'+esc(peerValue(x.key,peers[x.key]))+'</b></div>':"")+'</div>';
         }).join("")+'</div>'+
+        '<div class="af-explanation"><h4>Чем отличается от остальных</h4>'+
+          (highlights.length?'<ul>'+highlights.slice(0,3).map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul>':
+            '<p>Выраженных отличий по выбранным простым правилам сравнения не найдено. Рейтинг учитывает сочетание всех признаков.</p>')+
+          '<p class="af-explanation-note">Это наблюдаемые отличия, а не объяснение вклада признаков в расчёт Isolation Forest и не доказательство нарушения.</p></div>'+
         '<div class="af-observations"><h4>Наблюдения по простым порогам</h4>'+
         '<ul>'+descriptions.map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul>'+
         '<p>Это описание измеренных признаков, а не доказательство нарушения и не объяснение вклада признаков в расчёт модели.</p></div>';
@@ -585,10 +746,11 @@
           '<div class="af-rank-list">'+top.map(function(item,i){
             return '<button type="button" class="af-rank-item'+(selected===item.merchant?' selected':'')+'" data-index="'+i+'" aria-pressed="'+(selected===item.merchant?'true':'false')+'" aria-label="Характеристики продавца '+esc(item.merchant)+'">'+
               '<span class="af-rank-number">'+(i+1)+'</span><span class="af-rank-content"><span class="af-rank-name">'+esc(item.merchant)+'</span>'+
+              '<span class="af-rank-teaser">'+esc(window.SRAntifraud.comparisonTeaser(item))+'</span>'+
               '<span class="af-rank-track" aria-hidden="true"><span class="af-rank-fill" style="width:'+bars[i]+'%"></span></span></span>'+
               '<span class="af-rank-score">'+esc(Number(item.anomaly_score).toFixed(4).replace(".",","))+'</span></button>';
           }).join("")+'</div>'+
-          '<div class="af-rank-foot">Длина полосы нормирована только по этому топ-10 и не показывает процент риска или вероятность мошенничества.</div>')+
+          '<div class="af-rank-foot">Полосы показывают только относительные позиции в этом рейтинге. Баллы — не проценты риска. Подписи описывают измеренные признаки, а не внутренние причины решения модели.</div>')+
           panel("Характеристики продавца",'<div class="af-detail" id="af-detail"></div>')+
         '</div>'+
         '<div class="af-method"><h3>Как читать результаты</h3><div class="af-method-grid">'+
@@ -643,15 +805,16 @@
     ];
     function inputField(item){
       return '<div class="field econ-field"><label for="'+item.id+'">'+item.name+'</label>'+
-        '<input class="input" id="'+item.id+'" type="number" min="'+item.min+'" max="'+item.max+'" step="'+item.step+'" required value="'+item.value+'">'+
-        '<div class="field-help">'+item.help+'</div></div>';
+        '<input class="input" id="'+item.id+'" type="text" inputmode="'+(item.step===1?"numeric":"decimal")+'" autocomplete="off" aria-required="true" aria-describedby="'+item.id+'-help '+item.id+'-error" value="'+item.value+'">'+
+        '<div class="field-help" id="'+item.id+'-help">'+item.help+'</div>'+
+        '<div class="econ-field-error" id="'+item.id+'-error" role="status" aria-live="polite"></div></div>';
     }
     var placeholder='<div class="econ-empty"><div class="econ-empty-icon" aria-hidden="true">▥</div>'+
       '<h3>Расчёт ещё не выполнен</h3><p>Укажите предположения и нажмите «Рассчитать». Система сравнит низкую, базовую и высокую нагрузку.</p></div>';
     root.innerHTML=section("Экономическая оценка","Исследуйте возможный эффект автоматизации при разных предположениях о нагрузке и затратах.")+
       '<div class="econ-warning"><strong>Это сценарный расчёт, а не подтверждённая экономия.</strong> Все исходные показатели заданы в качестве предположений. Без реальных замеров, дисконтирования, налогов, рисков и затрат на интеграцию цифры нельзя считать прогнозом фактической окупаемости.</div>'+
       '<div class="econ-layout">'+
-      panel("Исходные предположения",'<div class="econ-form-body"><div class="econ-section-head"><span>ВВОДНЫЕ ДАННЫЕ</span><p>Все значения можно редактировать. Данные не сохраняются на сервере.</p></div>'+
+      panel("Исходные предположения",'<div class="econ-form-body"><div class="econ-section-head"><span>ВВОДНЫЕ ДАННЫЕ</span><p>Все значения можно редактировать. Данные не сохраняются на сервере. Используйте обычные цифры, запятую или точку для дробной части; символ ₽ вводить не нужно.</p></div>'+
         '<form id="econ-form">'+
         '<div class="econ-fields">'+assumptions.map(inputField).join("")+'</div>'+
         '<div class="econ-presets"><span>Быстрый выбор объёма:</span>'+
@@ -667,17 +830,25 @@
       '<p class="econ-footer">Методика: прямой денежный эквивалент сэкономленного рабочего времени и простая окупаемость без дисконтирования. Положительный расчётный эффект не означает реальную экономию бюджета или сокращение затрат организации.</p>';
 
     function payload(){
-      var keys=["econ-count","econ-before","econ-after","econ-hour","econ-maint","econ-dev"];
-      var values=keys.map(function(id){return Number($(id).value);});
-      if(values.some(function(v){return !Number.isFinite(v);}))throw Error("Введите корректные конечные числа во все поля.");
-      if(!Number.isInteger(values[0])||values[0]<1||values[0]>100000000)throw Error("Число отчётов должно быть целым от 1 до 100 000 000.");
-      if(values[1]<=0||values[1]>100000||values[2]<0||values[2]>values[1])
-        throw Error("Время вручную должно быть положительным, а время с системой — от нуля до ручного времени.");
-      if(values[3]<=0||values[3]>100000000||values[4]<0||values[4]>100000000000||values[5]<0||values[5]>100000000000)
-        throw Error("Проверьте стоимость часа и суммы затрат. Они должны быть неотрицательными и в пределах формы.");
-      return {workflows_per_year:values[0],manual_minutes:values[1],
-        automated_minutes:values[2],hourly_cost_rub:values[3],
-        maintenance_rub_year:values[4],development_rub:values[5]};
+      var raw={};
+      assumptions.forEach(function(item){raw[item.id]=$(item.id).value;});
+      var parsed=window.SREconomics.validateAssumptions(raw);
+      assumptions.forEach(function(item){
+        var input=$(item.id);
+        var problem=parsed.errors.find(function(e){return e.id===item.id;});
+        var note=$(item.id+"-error");
+        note.textContent=problem?problem.message:"";
+        if(problem)input.setAttribute("aria-invalid","true");
+        else input.removeAttribute("aria-invalid");
+      });
+      if(!parsed.valid){
+        $(parsed.errors[0].id).focus();
+        throw Error("Проверьте выделенные поля с исходными данными.");
+      }
+      var values=parsed.values;
+      return {workflows_per_year:values["econ-count"],manual_minutes:values["econ-before"],
+        automated_minutes:values["econ-after"],hourly_cost_rub:values["econ-hour"],
+        maintenance_rub_year:values["econ-maint"],development_rub:values["econ-dev"]};
     }
     function barRow(label,amount,max,kind){
       return '<div class="econ-breakdown-row"><div><span>'+label+'</span><strong class="'+(amount<0?'econ-negative':'')+'">'+cash(amount)+'</strong></div>'+
@@ -756,10 +927,19 @@
       $("econ-results").innerHTML="";
       say("econ-msg","");
     }
-    $("econ-form").addEventListener("input",markStale);
+    $("econ-form").addEventListener("input",function(e){
+      var input=e.target;
+      if(input && input.id && $(input.id+"-error")){
+        input.removeAttribute("aria-invalid");
+        $(input.id+"-error").textContent="";
+      }
+      markStale();
+    });
     Array.from(root.querySelectorAll(".econ-preset")).forEach(function(button){
       button.onclick=function(){
         $("econ-count").value=button.dataset.volume;
+        $("econ-count").removeAttribute("aria-invalid");
+        $("econ-count-error").textContent="";
         markStale();
       };
     });
@@ -806,40 +986,8 @@
     if(active)sessionStorage.setItem("sr-active-grant",active);else sessionStorage.removeItem("sr-active-grant");
     render();
   });
-  function syncMobileMenu(){
-    var mobile=window.innerWidth<=960;
-    var opened=mobile&&document.body.classList.contains("menu-open");
-    var sidebar=$("sidebar");
-    // A translated-out drawer still contains tabbable links unless it is inert.
-    sidebar.inert=mobile&&!opened;
-    sidebar.setAttribute("aria-hidden",mobile&&!opened?"true":"false");
-    $("menu-toggle").setAttribute("aria-expanded",opened?"true":"false");
-    $("menu-toggle").setAttribute("aria-label",opened?"Закрыть меню":"Открыть меню");
-    $("mobile-scrim").hidden=!opened;
-  }
-  function closeMobileMenu(restoreFocus){
-    var wasOpen=document.body.classList.contains("menu-open");
-    if(restoreFocus&&wasOpen&&window.innerWidth<=960)$("menu-toggle").focus();
-    document.body.classList.remove("menu-open");
-    syncMobileMenu();
-  }
-  $("menu-toggle").onclick=function(){
-    document.body.classList.toggle("menu-open");
-    syncMobileMenu();
-    if(document.body.classList.contains("menu-open")){
-      var first=$("navigation").querySelector("a");
-      if(first)first.focus();
-    }
-  };
-  $("mobile-scrim").onclick=function(){closeMobileMenu(true);};
-  document.addEventListener("keydown",function(e){
-    if(e.key==="Escape"&&document.body.classList.contains("menu-open"))closeMobileMenu(true);
-  });
-  window.addEventListener("resize",function(){
-    if(window.innerWidth>960)closeMobileMenu(false);
-    else syncMobileMenu();
-  });
-  syncMobileMenu();
+  // UI v0.4: the three workspace links and contextual tabs are always visible.
+  // navigation.js reads the URL; no off-canvas drawer or stored sidebar mode.
   reloadContracts().catch(function(err){root.innerHTML=section("Ошибка подключения","Не удалось получить сведения о сметах.")+
     '<div class="notice">'+esc(err.message)+'. Убедитесь, что сервер запущен.</div>';
     toast("Сервер недоступен",true);

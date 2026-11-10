@@ -4,56 +4,57 @@ import {readFileSync} from "node:fs";
 import {runInNewContext} from "node:vm";
 
 const source=readFileSync("src/smartruble/web/navigation.js","utf8");
-
-function setup(initial,storageBlocked=false){
-  const attrs={};
-  const saved={};
-  const events={};
-  const root={dataset:initial?{sidebar:initial}:{}};
-  const toggle={
-    title:"",
-    setAttribute:(k,v)=>{attrs[k]=v;},
-    addEventListener:(event,fn)=>{events[event]=fn;}
+function setup(path){
+  const spaces=["funds","control","analytics"];
+  const links=spaces.map(space=>{
+    const attributes={};
+    return {dataset:{space},
+      setAttribute:(k,v)=>{attributes[k]=v;},
+      removeAttribute:k=>{delete attributes[k];},
+      getAttribute:k=>attributes[k]||null};
+  });
+  const groups=spaces.map(space=>({dataset:{space},hidden:false}));
+  const caption={textContent:""};
+  const doc={
+    documentElement:{dataset:{}},
+    getElementById:id=>id==="workspaces"?{}:id==="space-caption"?caption:null,
+    querySelectorAll:selector=>selector.startsWith("#workspaces")?links:groups
   };
-  const document={
-    documentElement:root,
-    getElementById:(id)=>id==="sidebar-collapse"?toggle:null
-  };
-  const localStorage={
-    setItem:(k,v)=>{
-      if(storageBlocked)throw Error("storage unavailable");
-      saved[k]=v;
-    }
-  };
-  runInNewContext(source,{document,localStorage});
-  return {attrs,saved,events,root,toggle};
+  const window={document:doc,location:{pathname:path}};
+  runInNewContext(source,{window});
+  return {window,links,groups,caption,doc};
 }
-test("навигация раскрыта по умолчанию",()=>{
-  const app=setup();
-  assert.equal(app.attrs["aria-expanded"],"true");
-  assert.equal(app.attrs["aria-label"],"Свернуть боковое меню");
+test("все шесть адресов распределены по трём рабочим пространствам",()=>{
+  const f=setup("/app");
+  const fn=f.window.SRWorkspaceNavigation.spaceFromPath;
+  for(const route of ["/app","/app/overview","/app/estimates"]){
+    assert.equal(fn(route),"funds");
+  }
+  for(const route of ["/app/receipts","/app/history"]){
+    assert.equal(fn(route),"control");
+  }
+  for(const route of ["/app/antifraud","/app/economics"]){
+    assert.equal(fn(route),"analytics");
+  }
 });
-test("сворачивание сохраняет выбор, разворачивание возвращает подписи",()=>{
-  const app=setup();
-  app.events.click();
-  assert.equal(app.root.dataset.sidebar,"collapsed");
-  assert.equal(app.attrs["aria-expanded"],"false");
-  assert.equal(app.toggle.title,"Развернуть боковое меню");
-  assert.equal(app.saved["smartruble-sidebar"],"collapsed");
-  app.events.click();
-  assert.equal(app.root.dataset.sidebar,"expanded");
-  assert.equal(app.attrs["aria-expanded"],"true");
-  assert.equal(app.saved["smartruble-sidebar"],"expanded");
+test("текущее пространство выделяется, остальные ссылки не активны",()=>{
+  const f=setup("/app/receipts");
+  assert.equal(f.doc.documentElement.dataset.space,"control");
+  assert.equal(f.links[1].getAttribute("aria-current"),"location");
+  assert.equal(f.links[0].getAttribute("aria-current"),null);
+  assert.equal(f.links[2].getAttribute("aria-current"),null);
+  assert.equal(f.caption.textContent,"Проверка операций");
 });
-test("после перезагрузки сохранённое компактное меню корректно отражено кнопкой",()=>{
-  const app=setup("collapsed");
-  assert.equal(app.attrs["aria-expanded"],"false");
-  app.events.click();
-  assert.equal(app.root.dataset.sidebar,"expanded");
+test("неактивные группы вкладок скрыты для клавиатуры и скринридеров",()=>{
+  const f=setup("/app/economics");
+  assert.deepEqual(f.groups.map(x=>x.hidden),[true,true,false]);
+  assert.equal(f.links[2].getAttribute("aria-current"),"location");
 });
-test("отключённое хранилище не блокирует интерфейс",()=>{
-  const app=setup(undefined,true);
-  assert.doesNotThrow(()=>app.events.click());
-  assert.equal(app.root.dataset.sidebar,"collapsed");
-  assert.equal(app.attrs["aria-expanded"],"false");
+test("навигация следует URL без сохранённых устаревших настроек",()=>{
+  const f=setup("/app");
+  f.window.location.pathname="/app/history";
+  assert.equal(f.window.SRWorkspaceNavigation.sync(),"control");
+  assert.deepEqual(f.groups.map(x=>x.hidden),[true,false,true]);
+  assert.equal(f.links[1].getAttribute("aria-current"),"location");
+  assert.equal(f.links[0].getAttribute("aria-current"),null);
 });

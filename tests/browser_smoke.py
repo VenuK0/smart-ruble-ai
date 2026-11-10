@@ -47,6 +47,9 @@ def assert_layout(page, label: str):
             .filter(el => el.right > innerWidth + 3).slice(0,12)""")
         raise AssertionError(f"{label}: horizontal page overflow {result}: {offenders}")
     assert page.locator("#navigation a[data-page]").count() == 6, label
+    assert page.locator("#workspaces a[data-space]").count() == 3, label
+    assert page.locator("#workspaces a[aria-current='location']").count() == 1, label
+    assert page.locator("#navigation a[data-page]:visible").count() == 2, label
     assert page.locator(".brand-mark").evaluate("(img) => img.complete && img.naturalWidth > 0"), label
 
 
@@ -91,6 +94,36 @@ def main():
                     page.screenshot(path=str(ARTIFACTS / f"{width}-{name}.png"), full_page=True)
                 print(f"OK viewport={width}px screen={name}", flush=True)
 
+        # New estimate editor: no special keyboard characters are necessary.
+        for width in (375, 1440):
+            page.set_viewport_size({"width": width, "height": 900})
+            page.goto(BASE + "/app/estimates", wait_until="domcontentloaded")
+            page.locator("#estimate-rows .estimate-category").first.wait_for(timeout=20000)
+            page.locator("#new-example").click()
+            assert page.locator(".estimate-editor-row").count() == 3
+            assert page.locator("#estimate-total").inner_text().replace(" ", "").replace("\u00a0", "").replace("\u202f", "").replace("₽", "") == "180000"
+            page.locator("#estimate-add").click()
+            assert page.locator(".estimate-editor-row").count() == 4
+            page.locator(".estimate-editor-row").last.locator(".estimate-category").select_option("services")
+            page.locator(".estimate-editor-row").last.locator(".estimate-amount").fill("1250,50")
+            assert "181" in page.locator("#estimate-total").inner_text()
+            page.locator(".estimate-editor-row").last.locator(".estimate-remove-row").click()
+            assert page.locator(".estimate-editor-row").count() == 3
+            page.locator(".estimate-import summary").click()
+            page.locator("#estimate-text").fill("Материалы - 50000\nОборудование: 120000\nУслуги - 10000")
+            page.locator("#estimate-import-btn").click()
+            assert page.locator(".estimate-editor-row").count() == 3
+            assert "Импортировано" in page.locator("#estimate-import-msg").inner_text()
+            page.locator(".estimate-editor-row").nth(1).locator(".estimate-amount").fill("oops")
+            page.locator('#estimate-form button[type="submit"]').click()
+            assert page.locator(".estimate-editor-row").nth(1).locator(".estimate-amount").get_attribute("aria-invalid") == "true"
+            assert page.locator(".estimate-editor-row").nth(1).locator(".estimate-row-error").is_visible()
+            page.locator(".estimate-editor-row").nth(1).locator(".estimate-amount").fill("120000")
+            assert page.locator(".estimate-editor-row").nth(1).locator(".estimate-amount").get_attribute("aria-invalid") is None
+            assert_layout(page, f"{width}px populated estimate editor")
+            page.screenshot(path=str(ARTIFACTS / f"{width}-estimate-editor.png"), full_page=True)
+        print("OK interactive typed estimate editor and keyboard-friendly text import", flush=True)
+
         # Verify compact SVG actually renders descenders below its old bottom=128.
         # Geometry-only checks miss raster clipping; draw loaded same-origin SVG.
         page.set_viewport_size({"width": 1440, "height": 900})
@@ -119,41 +152,58 @@ def main():
         assert ink > 8, f"Wordmark descenders still invisible or clipped: {ink}"
         print("OK vector wordmark descenders visible in Chrome", flush=True)
 
-        # Mobile drawer should be inaccessible until opened and restore focus on Escape.
+        # Navigation is always visible; route selects one workspace and two tabs.
         page.set_viewport_size({"width": 375, "height": 812})
         page.goto(BASE + "/app", wait_until="domcontentloaded")
         page.locator("#page .page-head h1").wait_for(timeout=20000)
-        assert page.locator("#sidebar").evaluate("(el) => el.inert"), "Closed drawer must be inert"
-        page.locator("#menu-toggle").click()
-        assert not page.locator("#sidebar").evaluate("(el) => el.inert"), "Open drawer must be interactive"
-        assert page.locator("#menu-toggle").get_attribute("aria-expanded") == "true"
-        page.keyboard.press("Escape")
-        assert page.locator("#sidebar").evaluate("(el) => el.inert")
-        assert page.locator("#menu-toggle").get_attribute("aria-expanded") == "false"
-        assert page.locator("#menu-toggle").evaluate("(el) => document.activeElement === el")
-        print("OK mobile drawer inert/focus/Escape", flush=True)
+        assert page.locator("html").get_attribute("data-space") == "funds"
+        assert page.locator("#navigation a[data-page]:visible").count() == 2
+        page.locator('#workspaces a[data-space="control"]').click()
+        assert page.url.endswith("/app/receipts")
+        page.locator("#receipt-form").wait_for(timeout=20000)
+        assert page.locator("html").get_attribute("data-space") == "control"
+        assert page.locator('#workspaces a[data-space="control"]').get_attribute("aria-current") == "location"
+        assert page.locator("#navigation a[data-page]:visible").count() == 2
+        page.locator('#workspaces a[data-space="analytics"]').click()
+        assert page.url.endswith("/app/antifraud")
+        page.locator("#fraud-run").wait_for(timeout=20000)
+        assert page.locator("html").get_attribute("data-space") == "analytics"
+        print("OK three persistent mobile workspaces and contextual tabs", flush=True)
 
         page.goto(BASE + "/app/receipts", wait_until="domcontentloaded")
         page.locator("#page .page-head h1").wait_for(timeout=20000)
         for label in (".qty-label", ".price-label", ".total-label"):
             assert page.locator("#receipt-lines " + label).first.is_visible(), label
+        page.locator("#merchant").fill("ООО Тест")
+        page.locator(".item-name").first.fill("Товар")
+        page.locator(".item-price").first.fill("12,345")
+        page.locator("#receipt-submit").click()
+        assert page.locator(".item-price").first.get_attribute("aria-invalid") == "true"
+        assert page.locator(".receipt-row-error").first.is_visible()
+        page.locator(".item-price").first.fill("12,34")
+        assert page.locator(".item-price").first.get_attribute("aria-invalid") is None
         page.goto(BASE + "/app/history", wait_until="domcontentloaded")
         page.locator("#page .page-head h1").wait_for(timeout=20000)
         assert page.locator(".table-swipe-hint").first.is_visible()
-        print("OK mobile receipt field labels and table swipe hint", flush=True)
+        page.locator(".history-view").first.wait_for(timeout=20000)
+        assert page.locator(".history-view").first.inner_text().startswith("ЧЕК-")
+        assert page.locator(".history-selected-row").count() == 1
+        assert "smoke-receipt-1" in page.locator("#history-detail").inner_text()
+        assert "Исходный ID" in page.locator("#history-detail").inner_text()
+        print("OK mobile journal short numbers and selected details", flush=True)
 
-        # Desktop sidebar preference should persist across a reload.
+        # A direct bookmarked URL, not an old saved sidebar state, drives selection.
         page.set_viewport_size({"width": 1440, "height": 900})
-        page.goto(BASE + "/app", wait_until="domcontentloaded")
+        page.goto(BASE + "/app/economics", wait_until="domcontentloaded")
         page.locator("#page .page-head h1").wait_for(timeout=20000)
-        page.locator("#sidebar-collapse").click()
-        assert page.locator("html").get_attribute("data-sidebar") == "collapsed"
-        assert_layout(page, "1440px collapsed")
+        assert page.locator("html").get_attribute("data-space") == "analytics"
+        assert page.locator("#navigation a[aria-current='page']").count() == 1
+        assert page.locator("#navigation a[data-page]:visible").count() == 2
         page.reload(wait_until="domcontentloaded")
         page.locator("#page .page-head h1").wait_for(timeout=20000)
-        assert page.locator("html").get_attribute("data-sidebar") == "collapsed"
-        page.locator("#sidebar-collapse").click()
-        print("OK desktop collapse persistence", flush=True)
+        assert page.locator("html").get_attribute("data-space") == "analytics"
+        assert_layout(page, "1440px bookmarked economics")
+        print("OK bookmarkable desktop workspace state", flush=True)
 
         # Run analytics as a real user, so malformed result markup is detected.
         page.goto(BASE + "/app/antifraud", wait_until="domcontentloaded")
@@ -162,6 +212,10 @@ def main():
         assert page.locator(".af-rank-item").count() == 10
         page.locator(".af-rank-item").nth(1).click()
         assert page.locator("#af-detail .af-signal").count() == 6
+        assert page.locator("#af-detail .af-signal-peer").count() == 6
+        assert page.locator(".af-rank-teaser").count() == 10
+        assert "остальных" in page.locator("#af-detail").inner_text()
+        assert "не процент" in page.locator("#af-detail").inner_text()
         assert_layout(page, "anomaly populated")
         print("OK antifraud populated results", flush=True)
 
@@ -170,6 +224,15 @@ def main():
         page.locator(".econ-chart").wait_for(timeout=20000)
         assert page.locator(".econ-case").count() == 3
         assert page.locator(".econ-table tbody tr").count() == 3
+        page.locator("#econ-before").fill("20,5")
+        page.locator("#econ-hour").fill("1 250,50")
+        page.locator("#econ-submit").click()
+        page.locator(".econ-chart").wait_for(timeout=20000)
+        assert page.locator(".econ-case").count() == 3
+        page.locator("#econ-count").fill("5,5")
+        page.locator("#econ-submit").click()
+        assert page.locator("#econ-count").get_attribute("aria-invalid") == "true"
+        assert page.locator("#econ-count-error").is_visible()
         assert_layout(page, "economics populated")
         print("OK economics results and chart", flush=True)
 

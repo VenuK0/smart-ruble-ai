@@ -63,6 +63,28 @@ class ApiTests(unittest.TestCase):
         self.assertEqual(r.status_code, 409)
         self.assertEqual(client.get("/contracts/missing").status_code, 404)
 
+    def test_estimates_accept_keyboard_hyphen_and_no_currency_symbol(self):
+        result = client.post("/contracts", json={
+            "grant_id": self.grant + "-plain",
+            "text": "Материалы - 50000\nОборудование: 120000\nУслуги - 10000"
+        })
+        self.assertEqual(result.status_code, 200, result.text)
+        limits = result.json()["limits"]
+        self.assertEqual(limits, {
+            "consumables": 50000,
+            "equipment": 120000,
+            "services": 10000
+        })
+
+    def test_estimates_reject_unparsed_lines_instead_of_silent_dropping(self):
+        result = client.post("/contracts", json={
+            "grant_id": self.grant + "-bad",
+            "text": "Оборудование - 120000\nНепонятная статья - 10000"
+        })
+        self.assertEqual(result.status_code, 422, result.text)
+        self.assertIn("нераспознанные строки", result.json()["detail"])
+        self.assertEqual(client.get("/contracts/" + self.grant + "-bad").status_code, 404)
+
     def test_antifraud_synthetic(self):
         r = client.get("/antifraud/demo?seed=3")
         self.assertEqual(r.status_code, 200)
@@ -82,6 +104,23 @@ class ApiTests(unittest.TestCase):
                 for key in ["largest_student_share", "round_large_share", "night_share"]:
                     self.assertGreaterEqual(signals[key], 0)
                     self.assertLessEqual(signals[key], 1)
+                peers = row["comparison"]
+                self.assertEqual(peers["merchant_count"], data["merchant_count"] - 1)
+                for key in ["largest_student_share", "round_large_share", "night_share"]:
+                    self.assertGreaterEqual(peers["signals"][key], 0)
+                    self.assertLessEqual(peers["signals"][key], 1)
+        # Verify the peer average uses ALL other sellers, not only top-10.
+        from smartruble.data import make_transactions
+        from smartruble.antifraud import merchant_features, FEATURES
+        tx, _ = make_transactions(seed=3)
+        merchants, matrix = merchant_features(tx)
+        item = data["top"][0]
+        excluded_index = merchants.index(item["merchant"])
+        night_index = FEATURES.index("night_share")
+        others = [float(matrix[i][night_index]) for i in range(len(merchants))
+                  if i != excluded_index]
+        self.assertAlmostEqual(item["comparison"]["signals"]["night_share"],
+                               round(sum(others) / len(others), 4), places=4)
         self.assertEqual(data, client.get("/antifraud/demo?seed=3").json())
         self.assertEqual(client.get("/antifraud/demo?seed=10001").status_code, 422)
 

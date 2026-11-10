@@ -57,11 +57,17 @@ def main() -> None:
         page.goto(BASE + "/app/estimates", wait_until="domcontentloaded")
         page.locator("#grant-name").wait_for()
         page.locator("#grant-name").fill(grant_id)
-        page.locator("#estimate-text").fill(
-            "Расходные материалы — 50 000 ₽\n"
-            "Оборудование — 120 000 ₽\n"
-            "Услуги хостинга — 10 000 ₽"
-        )
+        # A user only selects categories and types ordinary numbers.
+        # No em dash or keyboard currency sign is needed.
+        page.locator("#estimate-rows .estimate-category").first.select_option("consumables")
+        page.locator("#estimate-rows .estimate-amount").first.fill("50000")
+        page.locator("#estimate-add").click()
+        page.locator("#estimate-rows .estimate-category").nth(1).select_option("equipment")
+        page.locator("#estimate-rows .estimate-amount").nth(1).fill("120000")
+        page.locator("#estimate-add").click()
+        page.locator("#estimate-rows .estimate-category").nth(2).select_option("services")
+        page.locator("#estimate-rows .estimate-amount").nth(2).fill("10000")
+        assert amount(page.locator("#estimate-total").inner_text()) == "180000"
         with page.expect_response(
             lambda r: r.url == BASE + "/contracts" and r.request.method == "POST"
         ) as creating:
@@ -87,7 +93,7 @@ def main() -> None:
         page.locator("#merchant").fill("ООО Лаборатория")
         page.locator(".item-name").first.fill("резистор")
         page.locator(".item-qty").first.fill("2")
-        page.locator(".item-price").first.fill("1250.50")
+        page.locator(".item-price").first.fill("1 250,50")
         assert amount(page.locator("#receipt-total").inner_text()) == "2501"
         with page.expect_response(
             lambda r: r.url.endswith("/contracts/" + grant_id + "/validate")
@@ -148,12 +154,19 @@ def main() -> None:
         page.wait_for_function(
             "() => document.querySelectorAll('.history-view').length === 2"
         )
+        assert {b.strip() for b in page.locator(".history-view").all_inner_texts()} == {
+            "ЧЕК-0001", "ЧЕК-0002"
+        }
+        page.locator(".history-view").nth(1).click()
+        assert first["receipt_id"] in page.locator("#history-detail").inner_text()
+        assert page.locator(".history-selected-row").count() == 1
         page.locator("#history-search").fill("Лак")
         page.wait_for_function(
             "() => document.querySelectorAll('.history-view').length === 1"
         )
         assert page.locator("#history-stat-count").inner_text().strip() == "1"
         assert second["receipt_id"] in page.locator("#history-detail").inner_text()
+        assert page.locator(".history-view").first.inner_text() == "ЧЕК-0002"
         assert second["items"][0]["reason"] in page.locator("#history-detail").inner_text()
         assert "Цепочка записей проверена" in page.locator("#audit-state").inner_text()
         page.locator("#history-status").select_option(second["status"])
@@ -180,7 +193,7 @@ def main() -> None:
         assert page.locator(".af-rank-item").count() == 10
         page.locator(".af-rank-item").nth(1).click()
         assert page.locator(".af-signal").count() == 6
-        assert "не вероятность мошенничества" in page.locator("#page").inner_text().lower()
+        assert "не является процентом риска" in page.locator("#page").inner_text().lower()
         page.screenshot(path=str(ARTIFACTS / "forum-04-anomalies.png"), full_page=True)
         print("FORUM 5/6: reproducible synthetic anti-fraud analysis", flush=True)
 
