@@ -92,3 +92,22 @@
  .af-method{padding:17px}
 }
 @media(prefers-reduced-motion:reduce){.af-rank-item{transition:none}}
+
+/* Explicit peer benchmarks and transparent reasons for investigating a ranking. */
+.af-rank-teaser{display:block;margin-top:6px;color:#8D7C70;font-size:10.5px;line-height:1.5}
+.af-rank-score{align-self:flex-start;margin-top:1px}
+.af-score small{display:block;margin-top:7px;color:#7C7167;font-size:11px}
+.af-comparison-context{margin:-5px 0 14px;padding:11px 13px;background:#FBF8F4;border:1px solid #EEE5DD;border-radius:6px;color:#77695E;font-size:11.5px;line-height:1.55}
+.af-signal-peer{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:6px;border-top:1px solid #EEE7E1;margin-top:12px;padding-top:10px}
+.af-signal .af-signal-peer>span{font-size:10.5px;color:#85766B}
+.af-signal-peer b{font-size:12px;font-weight:710;color:#55463B;font-variant-numeric:tabular-nums}
+.af-explanation{border:1px solid #E5DDD5;background:#FAF7F3;padding:16px 18px;border-radius:7px;margin-top:17px}
+.af-explanation h4{font-size:12.5px;color:#302824;margin-bottom:11px}
+.af-explanation ul{padding-left:18px;margin:0;color:#594F46;font-size:12px;line-height:1.6}
+.af-explanation li+li{margin-top:5px}
+.af-explanation p{font-size:11.5px;color:#6D6157;line-height:1.6}
+.af-explanation .af-explanation-note{margin-top:11px;color:#8A7B6E}
+@media(max-width:680px){
+ .af-explanation{padding:14px}
+ .af-rank-teaser{font-size:10px}
+}
