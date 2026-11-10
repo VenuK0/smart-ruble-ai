@@ -681,6 +681,11 @@
     var selected="";
     var sample=null;
     function percentText(value){return number(window.SRAntifraud.percent(value))+" %";}
+    function peerValue(key,value){
+      if(key==="night_share"||key==="round_large_share"||key==="largest_student_share")return percentText(value);
+      if(key==="average_amount_rub")return cash(value);
+      return number(value);
+    }
     function renderDetail(merchant){
       var item=(sample.top||[]).find(function(x){return x.merchant===merchant;});
       var target=$("af-detail");
@@ -691,22 +696,35 @@
       }
       var s=item.signals||{};
       var descriptions=window.SRAntifraud.notes(s);
+      var highlights=window.SRAntifraud.comparisonHighlights(item);
+      var peers=item.comparison&&item.comparison.signals;
+      var peerCount=item.comparison&&Number(item.comparison.merchant_count);
+      var rank=(sample.top||[]).findIndex(function(x){return x.merchant===merchant;})+1;
       var signalData=[
-        {caption:"Операций",value:number(s.transaction_count),help:"Число транзакций продавца"},
-        {caption:"Получателей",value:number(s.student_count),help:"Различные получатели средств"},
-        {caption:"Крупные круглые суммы",value:percentText(s.round_large_share),help:"Доля операций на сумму от 10 000 ₽, кратную 1 000 ₽"},
-        {caption:"Ночные операции",value:percentText(s.night_share),help:"Доля операций с 22:00 до 05:59"},
-        {caption:"Доля одного получателя",value:percentText(s.largest_student_share),help:"Максимальная доля одного получателя"},
-        {caption:"Средняя операция",value:cash(s.average_amount_rub),help:"Средняя сумма в синтетической выборке"}
+        {key:"transaction_count",caption:"Операций",value:number(s.transaction_count),help:"Число транзакций продавца"},
+        {key:"student_count",caption:"Получателей",value:number(s.student_count),help:"Различные получатели средств"},
+        {key:"round_large_share",caption:"Крупные круглые суммы",value:percentText(s.round_large_share),help:"Доля операций на сумму от 10 000 ₽, кратную 1 000 ₽"},
+        {key:"night_share",caption:"Ночные операции",value:percentText(s.night_share),help:"Доля операций с 22:00 до 05:59"},
+        {key:"largest_student_share",caption:"Доля одного получателя",value:percentText(s.largest_student_share),help:"Максимальная доля одного получателя"},
+        {key:"average_amount_rub",caption:"Средняя операция",value:cash(s.average_amount_rub),help:"Средняя сумма в синтетической выборке"}
       ];
       target.innerHTML='<div class="af-detail-heading"><div><span class="af-eyebrow">КАРТОЧКА ПРОДАВЦА</span>'+
         '<h3>'+esc(item.merchant)+'</h3></div><span class="af-groundtruth '+(item.planted_anomaly?'flag':'normal')+'">'+
         (item.planted_anomaly?'Заложен тестовый сценарий':'Обычный тестовый сценарий')+'</span></div>'+
-        '<div class="af-score"><div><span>Балльная оценка модели</span><strong>'+esc(Number(item.anomaly_score).toFixed(4).replace(".",","))+'</strong></div>'+
-        '<p>Относительная оценка Isolation Forest. Это не вероятность мошенничества.</p></div>'+
+        '<div class="af-score"><div><span>Балльная оценка · не процент</span><strong>'+esc(Number(item.anomaly_score).toFixed(4).replace(".",","))+'</strong>'+
+        '<small>Место №'+number(rank)+' в топ-'+number((sample.top||[]).length)+' текущего набора</small></div>'+
+        '<p>Оценка Isolation Forest служит для ранжирования необычности. Она не является процентом риска или вероятностью мошенничества.</p></div>'+
+        (peers&&peerCount>0?'<p class="af-comparison-context">Сравнение со средними показателями остальных '+number(peerCount)+' продавцов (без '+esc(merchant)+'). Среднее считается по продавцам, а не по отдельным транзакциям.</p>':
+          '<p class="af-comparison-context">Для этого набора сравнение с другими продавцами недоступно.</p>')+
         '<div class="af-signal-grid">'+signalData.map(function(x){
-          return '<div class="af-signal"><span>'+x.caption+'</span><strong>'+x.value+'</strong><small>'+x.help+'</small></div>';
+          return '<div class="af-signal"><span>'+x.caption+'</span><strong>'+x.value+'</strong><small>'+x.help+'</small>'+
+            (peers&&peerCount>0&&Number.isFinite(Number(peers[x.key]))?
+              '<div class="af-signal-peer"><span>В среднем у остальных</span><b>'+esc(peerValue(x.key,peers[x.key]))+'</b></div>':"")+'</div>';
         }).join("")+'</div>'+
+        '<div class="af-explanation"><h4>Чем отличается от остальных</h4>'+
+          (highlights.length?'<ul>'+highlights.slice(0,3).map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul>':
+            '<p>Выраженных отличий по выбранным простым правилам сравнения не найдено. Рейтинг учитывает сочетание всех признаков.</p>')+
+          '<p class="af-explanation-note">Это наблюдаемые отличия, а не объяснение вклада признаков в расчёт Isolation Forest и не доказательство нарушения.</p></div>'+
         '<div class="af-observations"><h4>Наблюдения по простым порогам</h4>'+
         '<ul>'+descriptions.map(function(x){return '<li>'+esc(x)+'</li>';}).join("")+'</ul>'+
         '<p>Это описание измеренных признаков, а не доказательство нарушения и не объяснение вклада признаков в расчёт модели.</p></div>';
@@ -728,10 +746,11 @@
           '<div class="af-rank-list">'+top.map(function(item,i){
             return '<button type="button" class="af-rank-item'+(selected===item.merchant?' selected':'')+'" data-index="'+i+'" aria-pressed="'+(selected===item.merchant?'true':'false')+'" aria-label="Характеристики продавца '+esc(item.merchant)+'">'+
               '<span class="af-rank-number">'+(i+1)+'</span><span class="af-rank-content"><span class="af-rank-name">'+esc(item.merchant)+'</span>'+
+              '<span class="af-rank-teaser">'+esc(window.SRAntifraud.comparisonTeaser(item))+'</span>'+
               '<span class="af-rank-track" aria-hidden="true"><span class="af-rank-fill" style="width:'+bars[i]+'%"></span></span></span>'+
               '<span class="af-rank-score">'+esc(Number(item.anomaly_score).toFixed(4).replace(".",","))+'</span></button>';
           }).join("")+'</div>'+
-          '<div class="af-rank-foot">Длина полосы нормирована только по этому топ-10 и не показывает процент риска или вероятность мошенничества.</div>')+
+          '<div class="af-rank-foot">Полосы показывают только относительные позиции в этом рейтинге. Баллы — не проценты риска. Подписи описывают измеренные признаки, а не внутренние причины решения модели.</div>')+
           panel("Характеристики продавца",'<div class="af-detail" id="af-detail"></div>')+
         '</div>'+
         '<div class="af-method"><h3>Как читать результаты</h3><div class="af-method-grid">'+
