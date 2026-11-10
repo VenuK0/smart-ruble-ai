@@ -67,3 +67,23 @@ test("currency glyph and wrong decimal formats are rejected in numeric fields",(
     assert.equal(inspect([{name:"Товар",qty:"1",price:raw}]).valid,false);
   }
 });
+
+test("receipt error points to the exact invalid input rather than the whole form",()=>{
+  const items=[
+    {name:"",qty:"1",price:"50"},
+    {name:"Товар",qty:"0",price:"50"},
+    {name:"Услуга",qty:"1",price:"12,345"}
+  ];
+  const r=inspect(items);
+  assert.equal(r.valid,false);
+  assert.deepEqual(Array.from(r.errors,x=>x.field),["name","qty","price"]);
+  assert.deepEqual(Array.from(r.errors,x=>x.index),[0,1,2]);
+  assert.match(r.errors[1].message,/Количество/);
+  assert.match(r.errors[2].message,/цену/);
+});
+test("a corrected receipt produces no lingering inline errors",()=>{
+  const r=inspect([{name:"Товар",qty:"2",price:"1 250,50"}]);
+  assert.equal(r.valid,true);
+  assert.equal(r.errors.length,0);
+  assert.equal(r.total,2501);
+});
