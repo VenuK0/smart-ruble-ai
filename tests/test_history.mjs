@@ -38,3 +38,18 @@ test("empty data and decimal floats are handled consistently",()=>{
   assert.equal(x.approved,.3);
   assert.equal(x.review,.3);
 });
+
+test("readable numbers are stable across search and never replace receipt IDs",()=>{
+ const names=history.shortLabels(entries);
+ assert.equal(names["demo-1"],"ЧЕК-0003");
+ assert.equal(names["demo-2"],"ЧЕК-0002");
+ assert.equal(names["demo-3"],"ЧЕК-0001");
+ assert.equal(history.filter(entries,"ЧЕК-0002","",names)[0].record.receipt_id,"demo-2");
+ assert.equal(history.filter(entries,"DEMO-2","",names)[0].record.receipt_id,"demo-2");
+ assert.equal(entries[1].record.receipt_id,"demo-2");
+});
+test("short labels handle empty journal and do not produce executable markup",()=>{
+ const labels=history.shortLabels([]);
+ assert.equal(Object.keys(labels).length,0);
+ assert.equal(history.filter([],"ЧЕК-0001","",labels).length,0);
+});
