@@ -168,3 +168,14 @@
   .history-item{gap:9px}
   .history-item-values{max-width:100px}
 }
+
+/* Current journal row and short display labels (original audit ID remains intact). */
+.history-layout tbody tr.history-selected-row>td{background:#FBF3EF}
+.history-layout tbody tr.history-selected-row>td:first-child{box-shadow:inset 3px 0 0 #B84541}
+.history-view-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.history-view-wrap .history-view{max-width:100%;white-space:nowrap;font-size:12px;font-weight:680}
+.history-selected-note{display:inline-block;color:#85463F;background:#F2E6E1;border-radius:4px;padding:3px 6px;font-size:10px;font-weight:690}
+.history-original-id{display:grid;gap:5px;margin-top:11px}
+.history-original-id>span{font-size:10.5px;color:#887B70}
+.history-original-id code{overflow-wrap:anywhere;color:#6F6259;font-size:11px;line-height:1.5}
+#history-detail{scroll-margin-top:110px}
