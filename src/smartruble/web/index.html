@@ -8,7 +8,7 @@
   <meta name="application-name" content="SmartRubleAI">
   <title>СмартРубль AI — Контроль грантов и расходов</title>
   <link rel="icon" type="image/svg+xml" href="/app/static/brand/favicon.svg?v=6">
-  <script>try{if(localStorage.getItem("smartruble-sidebar")==="collapsed")document.documentElement.dataset.sidebar="collapsed";}catch(_){/* Storage may be blocked */}</script>
+  <script>(function(){var path=location.pathname;document.documentElement.dataset.space=/^\/app\/(receipts|history)\/?$/.test(path)?"control":/^\/app\/(antifraud|economics)\/?$/.test(path)?"analytics":"funds";})();</script>
   <link rel="stylesheet" href="/app/static/styles.css">
   <link rel="stylesheet" href="/app/static/design.css?v=7">
   <link rel="stylesheet" href="/app/static/workspace.css?v=2">
@@ -18,69 +18,68 @@
   <link rel="stylesheet" href="/app/static/antifraud.css?v=1">
   <link rel="stylesheet" href="/app/static/economics.css?v=1">
   <link rel="stylesheet" href="/app/static/polish.css?v=2">
-  <script src="/app/static/navigation.js?v=1" defer></script>
+  <link rel="stylesheet" href="/app/static/v04.css?v=1">
+  <script src="/app/static/navigation.js?v=2" defer></script>
   <script src="/app/static/export.js?v=1" defer></script>
   <script src="/app/static/receipt-utils.js?v=1" defer></script>
   <script src="/app/static/history-utils.js?v=1" defer></script>
   <script src="/app/static/antifraud-utils.js?v=1" defer></script>
   <script src="/app/static/economics-utils.js?v=1" defer></script>
-  <script src="/app/static/app.js?v=13" defer></script>
+  <script src="/app/static/app.js?v=14" defer></script>
 </head>
 <body>
-  <div class="shell">
-    <aside class="sidebar" id="sidebar" aria-label="Боковое меню">
-      <a class="brand brand-lockup" href="/app" aria-label="СмартРубль AI — Контроль грантов и расходов. Главная">
-        <img class="brand-mark" src="/app/static/brand/mark.svg?v=6" width="56" height="56" alt="" aria-hidden="true">
-        <span class="brand-copy">
-          <img class="brand-wordmark" src="/app/static/brand/wordmark.svg?v=7" width="174" height="25" alt="" aria-hidden="true">
-          <span class="brand-subtitle">КОНТРОЛЬ ГРАНТОВ И РАСХОДОВ</span>
-        </span>
-      </a>
-      <div class="sidebar-nav-header">
-        <span class="sidebar-nav-heading">Разделы</span>
-        <button type="button" id="sidebar-collapse" class="sidebar-collapse" aria-controls="navigation" aria-expanded="true" aria-label="Свернуть боковое меню" title="Свернуть боковое меню">
-          <svg viewBox="0 0 24 24" aria-hidden="true" class="collapse-icon"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="m16 9-3 3 3 3"/></svg>
-        </button>
-      </div>
-      <nav aria-label="Разделы системы" id="navigation">
-        <div class="nav-section" role="group" aria-labelledby="nav-work-label">
-          <div class="nav-group-title" id="nav-work-label">Работа со средствами</div>
-          <a href="/app" data-page="overview" aria-label="Обзор" title="Обзор"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.3"/><rect x="14" y="3" width="7" height="7" rx="1.3"/><rect x="3" y="14" width="7" height="7" rx="1.3"/><rect x="14" y="14" width="7" height="7" rx="1.3"/></svg><span class="nav-text">Обзор</span></a>
-          <a href="/app/estimates" data-page="estimates" aria-label="Сметы и лимиты" title="Сметы и лимиты"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h8l4 4v13H5v-17h2Z"/><path d="M15 3.5v4h4M8 12h8M8 16h8"/></svg><span class="nav-text">Сметы и лимиты</span></a>
-          <a href="/app/receipts" data-page="receipts" aria-label="Проверка чеков" title="Проверка чеков"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6"/></svg><span class="nav-text">Проверка чеков</span></a>
-          <a href="/app/history" data-page="history" aria-label="История операций" title="История операций"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8.5A8.5 8.5 0 1 1 3.8 13M4 3.8v5h5"/><path d="M12 7.5V12l3.2 2"/></svg><span class="nav-text">История операций</span></a>
-        </div>
-        <div class="nav-section" role="group" aria-labelledby="nav-analytics-label">
-          <div class="nav-group-title" id="nav-analytics-label">Аналитика</div>
-          <a href="/app/antifraud" data-page="antifraud" aria-label="Проверка аномалий" title="Проверка аномалий"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 20 6v6.3c0 4.3-3.2 7.2-8 9-4.8-1.8-8-4.7-8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg><span class="nav-text">Проверка аномалий</span></a>
-          <a href="/app/economics" data-page="economics" aria-label="Экономическая оценка" title="Экономическая оценка"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V12M10 20V8M16 20V14M22 20V4"/><path d="M2.5 20h20"/></svg><span class="nav-text">Экономическая оценка</span></a>
-        </div>
-      </nav>
-      <div class="sidebar-bottom">
-        <div class="sidebar-note"><span class="small-dot"></span> Исследовательский прототип</div>
-        <a href="/docs" target="_blank" rel="noopener" aria-label="Документация API" title="Документация API"><svg class="footer-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 0-3 0z"/><path d="M5 4v16M9 9h6M9 13h6"/></svg><span class="footer-link-text">Документация API</span></a>
-        <a href="https://github.com/VenuK0/smart-ruble-ai" target="_blank" rel="noopener" aria-label="Исходный код" title="Исходный код"><svg class="footer-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/></svg><span class="footer-link-text">Исходный код</span></a>
-      </div>
-    </aside>
+  <div class="shell v04-shell">
     <div class="workspace">
-      <header class="topbar">
-        <div class="topbar-left">
-          <button type="button" class="menu-toggle" id="menu-toggle" aria-label="Открыть меню" aria-controls="navigation" aria-expanded="false">☰</button>
-          <span class="topbar-label">Рабочее место финансового контроля</span>
-        </div>
-        <div class="topbar-right">
-          <label for="active-grant" class="grant-label">Активная смета</label>
-          <select id="active-grant" aria-label="Активная смета"><option value="">Не выбрана</option></select>
-          <span class="demo-label" title="Операции демонстрационные, без подключения к платёжным системам">Демо</span>
+      <header class="topbar v04-header">
+        <div class="v04-header-inner">
+          <a class="brand brand-lockup" href="/app" aria-label="СмартРубль AI — Контроль грантов и расходов. Главная">
+          <img class="brand-mark" src="/app/static/brand/mark.svg?v=6" width="48" height="48" alt="" aria-hidden="true">
+          <span class="brand-copy">
+            <img class="brand-wordmark" src="/app/static/brand/wordmark.svg?v=7" width="170" height="25" alt="" aria-hidden="true">
+            <span class="brand-subtitle">КОНТРОЛЬ ГРАНТОВ И РАСХОДОВ</span>
+          </span>
+        </a>
+          <nav class="v04-workspaces" id="workspaces" aria-label="Рабочие пространства">
+            <a href="/app" data-space="funds">Средства</a>
+            <a href="/app/receipts" data-space="control">Контроль</a>
+            <a href="/app/antifraud" data-space="analytics">Аналитика</a>
+          </nav>
+          <div class="topbar-right v04-header-actions">
+            <label for="active-grant" class="grant-label">Активная смета</label>
+            <select id="active-grant" aria-label="Активная смета"><option value="">Не выбрана</option></select>
+            <span class="demo-label" title="Операции демонстрационные, без подключения к платёжным системам">Демо</span>
+          </div>
         </div>
       </header>
+      <div class="v04-subbar">
+        <div class="v04-subbar-inner">
+          <div class="v04-space-caption" id="space-caption">Работа со средствами</div>
+          <nav id="navigation" aria-label="Разделы рабочего пространства">
+            <div class="nav-section" data-space="funds" role="group" aria-label="Средства">
+              <a href="/app" data-page="overview" aria-label="Обзор" title="Обзор"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.3"/><rect x="14" y="3" width="7" height="7" rx="1.3"/><rect x="3" y="14" width="7" height="7" rx="1.3"/><rect x="14" y="14" width="7" height="7" rx="1.3"/></svg><span class="nav-text">Обзор</span></a>
+              <a href="/app/estimates" data-page="estimates" aria-label="Сметы и лимиты" title="Сметы и лимиты"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h8l4 4v13H5v-17h2Z"/><path d="M15 3.5v4h4M8 12h8M8 16h8"/></svg><span class="nav-text">Сметы и лимиты</span></a>
+            </div>
+            <div class="nav-section" data-space="control" role="group" aria-label="Контроль">
+              <a href="/app/receipts" data-page="receipts" aria-label="Проверка чеков" title="Проверка чеков"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h12v17l-3-2-3 2-3-2-3 2Z"/><path d="M9 8h6M9 12h6"/></svg><span class="nav-text">Проверка чеков</span></a>
+              <a href="/app/history" data-page="history" aria-label="История операций" title="История операций"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 8.5A8.5 8.5 0 1 1 3.8 13M4 3.8v5h5"/><path d="M12 7.5V12l3.2 2"/></svg><span class="nav-text">История операций</span></a>
+            </div>
+            <div class="nav-section" data-space="analytics" role="group" aria-label="Аналитика">
+              <a href="/app/antifraud" data-page="antifraud" aria-label="Проверка аномалий" title="Проверка аномалий"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.8 20 6v6.3c0 4.3-3.2 7.2-8 9-4.8-1.8-8-4.7-8-9V6Z"/><path d="m9 12 2 2 4-4"/></svg><span class="nav-text">Проверка аномалий</span></a>
+              <a href="/app/economics" data-page="economics" aria-label="Экономическая оценка" title="Экономическая оценка"><svg class="nav-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V12M10 20V8M16 20V14M22 20V4"/><path d="M2.5 20h20"/></svg><span class="nav-text">Экономическая оценка</span></a>
+            </div>
+          </nav>
+          <div class="v04-utilities">
+            <a href="/docs" target="_blank" rel="noopener" title="Документация API">API</a>
+            <a href="https://github.com/VenuK0/smart-ruble-ai" target="_blank" rel="noopener" title="Исходный код">GitHub</a>
+          </div>
+        </div>
+      </div>
       <main class="content" id="page">
         <div class="page-loading" role="status" aria-live="polite"><span class="page-loading-pulse" aria-hidden="true"></span><span>Загружаем рабочее место…</span></div>
       </main>
-      <footer class="global-foot">СмартРубль AI · Демонстрационная версия · Реальные платежи не выполняются</footer>
+      <footer class="global-foot">СмартРубль AI · Исследовательский прототип · Реальные платежи не выполняются</footer>
     </div>
   </div>
-  <button type="button" class="mobile-scrim" id="mobile-scrim" aria-label="Закрыть меню" hidden></button>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>
 </html>
