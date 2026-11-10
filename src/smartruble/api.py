@@ -136,8 +136,34 @@ def antifraud_demo(seed: int = 0):
         merchant: dict(zip(FEATURES, (float(value) for value in row)))
         for merchant, row in zip(merchant_ids, feature_matrix)
     }
+    # Compare each ranked merchant against *other* merchants, never against
+    # the top-10 subset and never including that merchant in its baseline.
+    peer_count = len(features_by_merchant) - 1
+    feature_totals = {
+        name: sum(row[name] for row in features_by_merchant.values())
+        for name in FEATURES
+    }
+
+    def peer_comparison(merchant):
+        if peer_count < 1:
+            return None
+        current = features_by_merchant[merchant]
+        mean = lambda name: (feature_totals[name] - current[name]) / peer_count
+        return {
+            "merchant_count": peer_count,
+            "signals": {
+                "transaction_count": round(mean("n_tx"), 2),
+                "student_count": round(mean("n_students"), 2),
+                "largest_student_share": round(mean("top_student_share"), 4),
+                "round_large_share": round(mean("round_share"), 4),
+                "night_share": round(mean("night_share"), 4),
+                "average_amount_rub": round(mean("mean_amount"), 2),
+            },
+        }
+
     top = [
         {"merchant": merchant,
+         "comparison": peer_comparison(merchant),
          "anomaly_score": round(float(score), 4),
          "planted_anomaly": merchant in planted,
          "signals": {
