@@ -54,7 +54,11 @@ def create_contract(body: EstimateIn):
         raise HTTPException(409, "Контракт уже существует")
     parsed = parse_estimate(body.text)
     if not parsed["limits"]:
-        raise HTTPException(422, "В смете не найдено ни одной статьи")
+        raise HTTPException(422, "В смете не найдено ни одной распознанной статьи. Выберите категорию и укажите сумму.")
+    if parsed["unparsed"]:
+        examples = "; ".join(parsed["unparsed"][:3])
+        raise HTTPException(422, "Смета не создана: найдены нераспознанные строки: " + examples +
+                            ". Исправьте строки или заполните статьи через редактор.")
     CONTRACTS[body.grant_id] = SmartContract(limits=parsed["limits"], classifier=CLF)
     return {"grant_id": body.grant_id, **parsed}
 
