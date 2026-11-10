@@ -4,6 +4,10 @@
  */
 (function(root){
   "use strict";
+  function normalizeDecimal(value){
+    // Accept decimal comma and space-grouped thousands on a normal keyboard.
+    return String(value==null?"":value).trim().replace(/[\\s\\u00a0\\u202f]/g,"").replace(",",".");
+  }
   function inspect(items){
     var totalCents=0;
     var amounts=[];
@@ -12,8 +16,8 @@
       return {valid:false,message:"Чек должен содержать от 1 до 100 позиций.",total:0,count:Array.isArray(items)?items.length:0,amounts:[]};
     }
     items.forEach(function(item,index){
-      var priceRaw=String(item.price==null?"":item.price).trim();
-      var qtyRaw=String(item.qty==null?"":item.qty).trim();
+      var priceRaw=normalizeDecimal(item.price);
+      var qtyRaw=normalizeDecimal(item.qty);
       var price=Number(priceRaw),qty=Number(qtyRaw);
       var amount=price*qty;
       var cents=Math.round(amount*100);
@@ -35,5 +39,5 @@
     });
     return {valid:!message,message:message,total:totalCents/100,count:items.length,amounts:amounts};
   }
-  root.SRReceipt={inspect:inspect};
+  root.SRReceipt={inspect:inspect,normalizeDecimal:normalizeDecimal};
 })(typeof window!=="undefined"?window:globalThis);
