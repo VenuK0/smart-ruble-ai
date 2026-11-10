@@ -57,11 +57,17 @@ def main() -> None:
         page.goto(BASE + "/app/estimates", wait_until="domcontentloaded")
         page.locator("#grant-name").wait_for()
         page.locator("#grant-name").fill(grant_id)
-        page.locator("#estimate-text").fill(
-            "Расходные материалы — 50 000 ₽\n"
-            "Оборудование — 120 000 ₽\n"
-            "Услуги хостинга — 10 000 ₽"
-        )
+        # A user only selects categories and types ordinary numbers.
+        # No em dash or keyboard currency sign is needed.
+        page.locator("#estimate-rows .estimate-category").first.select_option("consumables")
+        page.locator("#estimate-rows .estimate-amount").first.fill("50000")
+        page.locator("#estimate-add").click()
+        page.locator("#estimate-rows .estimate-category").nth(1).select_option("equipment")
+        page.locator("#estimate-rows .estimate-amount").nth(1).fill("120000")
+        page.locator("#estimate-add").click()
+        page.locator("#estimate-rows .estimate-category").nth(2).select_option("services")
+        page.locator("#estimate-rows .estimate-amount").nth(2).fill("10000")
+        assert amount(page.locator("#estimate-total").inner_text()) == "180000"
         with page.expect_response(
             lambda r: r.url == BASE + "/contracts" and r.request.method == "POST"
         ) as creating:
