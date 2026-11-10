@@ -135,6 +135,19 @@
       while(used.has(base+"-"+n))n++;
       return base+"-"+n;
     }
+    var estimateCategories=window.SREstimate.categories;
+    function estimateRow(row){
+      row=row||{category:"",amount:""};
+      return '<div class="estimate-editor-row">'+
+        '<label class="estimate-row-field"><span>Категория расходов</span>'+
+          '<select class="input estimate-category" aria-label="Категория расходов" required>'+
+            '<option value="">Выберите статью</option>'+
+            estimateCategories.map(function(cat){return '<option value="'+cat.id+'"'+(cat.id===row.category?' selected':'')+'>'+esc(cat.name)+'</option>';}).join("")+
+          '</select></label>'+
+        '<label class="estimate-row-field"><span>Лимит, ₽</span>'+
+          '<input class="input estimate-amount" type="text" inputmode="decimal" autocomplete="off" maxlength="24" placeholder="Например, 50000" aria-label="Лимит статьи в рублях" required value="'+esc(row.amount||"")+'"></label>'+
+        '<button type="button" class="estimate-remove-row" aria-label="Удалить статью" title="Удалить статью">×</button></div>';
+    }
     root.innerHTML=section("Сметы и лимиты","Реестр смет, остатки средств и статьи расходов.")+
       '<div class="estimates-layout">'+
       panel("Реестр смет",contracts.length?
@@ -148,12 +161,25 @@
         '<div><h3>Смет пока нет</h3><p>Создайте первую смету в форме ниже. После этого здесь появятся лимиты, остатки и история проверок.</p></div></div>')+
       (estimate?'<div class="stack detail-stack" id="estimate-details"></div>':'')+
       panel("Новая смета",'<div class="panel-body estimate-form-body"><form id="estimate-form">'+
-        '<div class="estimate-form-grid"><div class="estimate-form-primary">'+
+        '<div class="estimate-editor-intro"><div class="estimate-editor-id">'+
         field("grant-name","Номер сметы",suggestedGrantId())+
-        '<p class="field-help">Предложен свободный номер. При необходимости измените его.</p></div>'+
-        '<div class="field"><label for="estimate-text">Статьи и лимиты</label>'+
-        '<textarea id="estimate-text" rows="5" maxlength="30000" required>Расходные материалы — 50 000 ₽\nОборудование — 120 000 ₽\nУслуги хостинга — 10 000 ₽</textarea>'+
-        '<div class="field-help">Каждая статья — отдельной строкой. Нераспознанные записи требуют ручной проверки.</div></div></div>'+
+        '<p class="field-help">Номер может содержать обычные буквы, цифры и дефис.</p></div>'+
+        '<p class="estimate-editor-prompt">Выберите категории, затем укажите лимиты обычными числами. Тире и символ ₽ вводить не нужно.</p></div>'+
+        '<div class="estimate-editor-heading"><div><h3>Статьи расходов</h3>'+
+        '<p>Одинаковые категории суммируются. Можно использовать запятую для копеек.</p></div>'+
+        '<span class="estimate-line-count" id="estimate-line-count">Статей: 1</span></div>'+
+        '<div id="estimate-rows">'+estimateRow({category:"",amount:""})+'</div>'+
+        '<div class="estimate-editor-controls"><button class="btn secondary btn-sm" id="estimate-add" type="button">+ Добавить статью</button>'+
+        '<span>Не более 50 строк</span></div>'+
+        '<div class="estimate-editor-total"><div><span>Общий лимит сметы</span>'+
+        '<small>Сумма введённых корректных строк</small></div>'+
+        '<output id="estimate-total" aria-live="polite">0 ₽</output></div>'+
+        '<details class="estimate-import"><summary>Есть текстовая смета? Импортировать строки</summary>'+
+        '<div class="estimate-import-body"><label for="estimate-text">Вставьте текст сметы</label>'+
+        '<textarea id="estimate-text" rows="4" maxlength="30000" placeholder="Материалы - 50000&#10;Оборудование: 120000&#10;Услуги - 10000"></textarea>'+
+        '<p>Подойдут обычный дефис <code>-</code> или двоеточие <code>:</code>. Знак ₽ и длинное тире необязательны.</p>'+
+        '<button class="btn secondary btn-sm" type="button" id="estimate-import-btn">Разобрать текст в таблицу</button>'+
+        formMessage("estimate-import-msg")+'</div></details>'+
         '<div class="form-actions"><button class="btn primary" type="submit">Создать смету</button>'+
         '<button class="btn secondary" type="button" id="new-example">Заполнить пример</button></div>'+
         formMessage("estimate-msg")+'</form></div>')+
@@ -178,25 +204,89 @@
         filtered.map(function(x){var limit=sum(x.limits),spent=sum(x.spent);return [x.grant_id,limit,spent,Math.max(0,limit-spent),x.transactions];}));
       };
     }
-    $("estimate-form").onsubmit=async function(e){
-      e.preventDefault();
-      var id=$("grant-name").value.trim();
-      if(!id){say("estimate-msg","Введите номер сметы",true);return;}
-      var button=$("estimate-form").querySelector("button[type=submit]");
-      button.disabled=true;
-      try{
-        var x=await api("/contracts","POST",{grant_id:id,text:$("estimate-text").value});
-        active=x.grant_id;
-        sessionStorage.setItem("sr-active-grant",active);
-        await reloadContracts();
-        toast(x.unparsed.length?"Смета создана. Требуют проверки строк: "+x.unparsed.length:"Смета создана");
-      }catch(err){say("estimate-msg",err.message,true);}
-      finally{button.disabled=false;}
+    function estimateRows(){
+      return Array.from($("estimate-rows").querySelectorAll(".estimate-editor-row")).map(function(row){
+        return {category:row.querySelector(".estimate-category").value,
+          amount:row.querySelector(".estimate-amount").value};
+      });
+    }
+    function setEstimateRows(rows){
+      $("estimate-rows").innerHTML=rows.map(estimateRow).join("");
+      updateEstimateEditor();
+    }
+    function updateEstimateEditor(){
+      var rows=estimateRows(),result=window.SREstimate.inspect(rows);
+      $("estimate-total").textContent=window.SREstimate.formatRub(result.totalCents);
+      $("estimate-line-count").textContent="Статей: "+number(rows.length);
+      $("estimate-add").disabled=rows.length>=window.SREstimate.maxRows;
+      Array.from($("estimate-rows").querySelectorAll(".estimate-remove-row")).forEach(function(btn){
+        btn.disabled=rows.length<=1;
+      });
+      return result;
+    }
+    $("estimate-rows").addEventListener("input",function(){
+      updateEstimateEditor();
+      say("estimate-msg","");
+    });
+    $("estimate-rows").addEventListener("change",function(){
+      updateEstimateEditor();
+      say("estimate-msg","");
+    });
+    $("estimate-rows").addEventListener("click",function(e){
+      var btn=e.target.closest(".estimate-remove-row");
+      if(!btn||estimateRows().length<=1)return;
+      btn.closest(".estimate-editor-row").remove();
+      updateEstimateEditor();
+      say("estimate-msg","");
+    });
+    $("estimate-add").onclick=function(){
+      if(estimateRows().length>=window.SREstimate.maxRows)return;
+      $("estimate-rows").insertAdjacentHTML("beforeend",estimateRow({category:"",amount:""}));
+      updateEstimateEditor();
+      var last=$("estimate-rows").lastElementChild;
+      if(last)last.querySelector(".estimate-category").focus();
     };
     $("new-example").onclick=function(){
       $("grant-name").value=suggestedGrantId();
-      $("estimate-text").value="Расходные материалы — 50 000 ₽\nОборудование — 120 000 ₽\nУслуги хостинга — 10 000 ₽";
+      setEstimateRows([
+        {category:"consumables",amount:"50000"},
+        {category:"equipment",amount:"120000"},
+        {category:"services",amount:"10000"}
+      ]);
+      say("estimate-msg","");
     };
+    $("estimate-import-btn").onclick=function(){
+      var result=window.SREstimate.importText($("estimate-text").value);
+      if(!result.valid){say("estimate-import-msg",result.message,true);return;}
+      setEstimateRows(result.rows);
+      say("estimate-import-msg","Импортировано строк: "+number(result.rows.length)+". Проверьте категории и суммы перед созданием.");
+      say("estimate-msg","");
+    };
+    $("estimate-form").onsubmit=async function(e){
+      e.preventDefault();
+      var id=$("grant-name").value.trim();
+      if(!id){say("estimate-msg","Введите номер сметы.",true);$("grant-name").focus();return;}
+      if(id.length>80){say("estimate-msg","Номер сметы не должен превышать 80 символов.",true);return;}
+      var result=updateEstimateEditor();
+      if(!result.valid){say("estimate-msg",result.message,true);return;}
+      var button=$("estimate-form").querySelector("button[type=submit]");
+      button.disabled=true;
+      try{
+        // Existing /contracts API accepts structured information as text;
+        // generation happens here so users never type ₽ or a special dash.
+        var contractText=result.lines.join("\n");
+        var x=await api("/contracts","POST",{grant_id:id,text:contractText});
+        if(x.unparsed && x.unparsed.length){
+          throw Error("Сервер не смог распознать все статьи. Проверьте данные и попробуйте снова.");
+        }
+        active=x.grant_id;
+        sessionStorage.setItem("sr-active-grant",active);
+        await reloadContracts();
+        toast("Смета создана: "+window.SREstimate.formatRub(result.totalCents));
+      }catch(err){say("estimate-msg",err.message,true);}
+      finally{button.disabled=false;}
+    };
+    updateEstimateEditor();
     if(estimate){
       var total=sum(estimate.limits),spent=sum(estimate.spent);
       var rows=Object.keys(estimate.limits).map(function(cat){
