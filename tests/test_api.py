@@ -66,7 +66,7 @@ class ApiTests(unittest.TestCase):
     def test_estimates_accept_keyboard_hyphen_and_no_currency_symbol(self):
         result = client.post("/contracts", json={
             "grant_id": self.grant + "-plain",
-            "text": "Материалы - 50000\\nОборудование: 120000\\nУслуги - 10000"
+            "text": "Материалы - 50000\nОборудование: 120000\nУслуги - 10000"
         })
         self.assertEqual(result.status_code, 200, result.text)
         limits = result.json()["limits"]
@@ -79,7 +79,7 @@ class ApiTests(unittest.TestCase):
     def test_estimates_reject_unparsed_lines_instead_of_silent_dropping(self):
         result = client.post("/contracts", json={
             "grant_id": self.grant + "-bad",
-            "text": "Оборудование - 120000\\nНепонятная статья - 10000"
+            "text": "Оборудование - 120000\nНепонятная статья - 10000"
         })
         self.assertEqual(result.status_code, 422, result.text)
         self.assertIn("нераспознанные строки", result.json()["detail"])
