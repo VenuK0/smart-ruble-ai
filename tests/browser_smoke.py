@@ -94,6 +94,30 @@ def main():
                     page.screenshot(path=str(ARTIFACTS / f"{width}-{name}.png"), full_page=True)
                 print(f"OK viewport={width}px screen={name}", flush=True)
 
+        # New estimate editor: no special keyboard characters are necessary.
+        for width in (375, 1440):
+            page.set_viewport_size({"width": width, "height": 900})
+            page.goto(BASE + "/app/estimates", wait_until="domcontentloaded")
+            page.locator("#estimate-rows .estimate-category").first.wait_for(timeout=20000)
+            page.locator("#new-example").click()
+            assert page.locator(".estimate-editor-row").count() == 3
+            assert page.locator("#estimate-total").inner_text().replace(" ", "").replace("\u00a0", "").replace("\u202f", "").replace("₽", "") == "180000"
+            page.locator("#estimate-add").click()
+            assert page.locator(".estimate-editor-row").count() == 4
+            page.locator(".estimate-editor-row").last.locator(".estimate-category").select_option("services")
+            page.locator(".estimate-editor-row").last.locator(".estimate-amount").fill("1250,50")
+            assert "181" in page.locator("#estimate-total").inner_text()
+            page.locator(".estimate-editor-row").last.locator(".estimate-remove-row").click()
+            assert page.locator(".estimate-editor-row").count() == 3
+            page.locator(".estimate-import summary").click()
+            page.locator("#estimate-text").fill("Материалы - 50000\\nОборудование: 120000\\nУслуги - 10000")
+            page.locator("#estimate-import-btn").click()
+            assert page.locator(".estimate-editor-row").count() == 3
+            assert "Импортировано" in page.locator("#estimate-import-msg").inner_text()
+            assert_layout(page, f"{width}px populated estimate editor")
+            page.screenshot(path=str(ARTIFACTS / f"{width}-estimate-editor.png"), full_page=True)
+        print("OK interactive typed estimate editor and keyboard-friendly text import", flush=True)
+
         # Verify compact SVG actually renders descenders below its old bottom=128.
         # Geometry-only checks miss raster clipping; draw loaded same-origin SVG.
         page.set_viewport_size({"width": 1440, "height": 900})
