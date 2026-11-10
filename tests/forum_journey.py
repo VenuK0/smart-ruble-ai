@@ -193,7 +193,7 @@ def main() -> None:
         assert page.locator(".af-rank-item").count() == 10
         page.locator(".af-rank-item").nth(1).click()
         assert page.locator(".af-signal").count() == 6
-        assert "не вероятность мошенничества" in page.locator("#page").inner_text().lower()
+        assert "не является процентом риска" in page.locator("#page").inner_text().lower()
         page.screenshot(path=str(ARTIFACTS / "forum-04-anomalies.png"), full_page=True)
         print("FORUM 5/6: reproducible synthetic anti-fraud analysis", flush=True)
 
