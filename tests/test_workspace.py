@@ -200,7 +200,7 @@ class WorkspaceTests(unittest.TestCase):
                 page = self.client.get(url).text
                 self.assertIn("/app/static/workspace.css?v=2", page)
                 self.assertIn("/app/static/export.js?v=1", page)
-                self.assertIn("/app/static/app.js?v=14", page)
+                self.assertIn("/app/static/app.js?v=15", page)
         css = self.client.get("/app/static/workspace.css")
         self.assertEqual(css.status_code, 200)
         self.assertIn(".welcome-panel", css.text)
@@ -227,21 +227,39 @@ class WorkspaceTests(unittest.TestCase):
             with self.subTest(item=item):
                 self.assertIn(item, script)
 
-    def test_estimates_use_compact_form_and_clean_main_outline(self):
+    def test_estimates_use_structured_editor_and_plain_numbers(self):
         html = self.client.get("/app/estimates").text
-        self.assertIn('/app/static/workspace.css?v=2', html)
         self.assertIn('<main class="content" id="page">', html)
-        self.assertNotIn('tabindex="-1"', html)
+        self.assertIn('/app/static/estimate-editor.css?v=1', html)
+        self.assertIn('/app/static/estimate-editor.js?v=1', html)
+        self.assertIn('/app/static/app.js?v=15', html)
         js = self.client.get("/app/static/app.js").text
-        self.assertIn('class="estimates-layout"', js)
-        self.assertIn('class="estimate-form-grid"', js)
-        self.assertIn('class="register-empty"', js)
-        self.assertIn('Смет пока нет', js)
-        self.assertIn('if(contracts.length){', js)
-        css = self.client.get("/app/static/workspace.css").text
-        self.assertIn('grid-template-columns:minmax(230px,.7fr) minmax(0,1.3fr)', css)
-        self.assertIn('.estimate-form-grid textarea', css)
-        self.assertIn('@media(max-width:760px)', css)
+        for marker in [
+            'class="estimates-layout"',
+            'class="estimate-editor-row"',
+            'id="estimate-rows"',
+            'id="estimate-total"',
+            'id="estimate-add"',
+            'class="estimate-category"',
+            'class="estimate-amount"',
+            'id="estimate-import-btn"',
+            'id="estimate-text"',
+            'window.SREstimate.inspect',
+            'window.SREstimate.importText',
+            'window.SREstimate.formatRub',
+            'Статей: ',
+            'Тире и символ ₽ вводить не нужно.',
+            'Одинаковые категории суммируются.',
+            'x.unparsed && x.unparsed.length',
+        ]:
+            with self.subTest(marker=marker):
+                self.assertIn(marker, js)
+        css = self.client.get("/app/static/estimate-editor.css")
+        self.assertEqual(css.status_code, 200)
+        self.assertIn('@media(max-width:680px)', css.text)
+        self.assertIn('.estimate-editor-row', css.text)
+        self.assertIn('.estimate-editor-total', css.text)
+
 
     def test_active_budget_details_precede_create_new_budget(self):
         script = self.client.get("/app/static/app.js").text
@@ -296,7 +314,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/receipts").text
         self.assertIn('/app/static/receipts.css?v=2', html)
         self.assertIn('/app/static/receipt-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=14', html)
+        self.assertIn('/app/static/app.js?v=15', html)
         script = self.client.get("/app/static/app.js").text
         for text in [
             'class="receipt-context"',
@@ -341,7 +359,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/history").text
         self.assertIn('/app/static/history.css?v=1', html)
         self.assertIn('/app/static/history-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=14', html)
+        self.assertIn('/app/static/app.js?v=15', html)
         js = self.client.get("/app/static/app.js").text
         for token in [
             'class="history-context"',
@@ -381,7 +399,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/antifraud").text
         self.assertIn('/app/static/antifraud.css?v=1', html)
         self.assertIn('/app/static/antifraud-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=14', html)
+        self.assertIn('/app/static/app.js?v=15', html)
         for path in ["/app/static/antifraud.css", "/app/static/antifraud-utils.js"]:
             self.assertEqual(self.client.get(path).status_code, 200)
         js = self.client.get("/app/static/app.js").text
@@ -406,7 +424,7 @@ class WorkspaceTests(unittest.TestCase):
         html = self.client.get("/app/economics").text
         self.assertIn('/app/static/economics.css?v=1', html)
         self.assertIn('/app/static/economics-utils.js?v=1', html)
-        self.assertIn('/app/static/app.js?v=14', html)
+        self.assertIn('/app/static/app.js?v=15', html)
         for path in ["/app/static/economics.css", "/app/static/economics-utils.js"]:
             self.assertEqual(self.client.get(path).status_code, 200, path)
         js = self.client.get("/app/static/app.js").text
@@ -435,7 +453,7 @@ class WorkspaceTests(unittest.TestCase):
                 html = self.client.get(route).text
                 self.assertIn('/app/static/polish.css?v=2', html)
                 self.assertIn('/app/static/v04.css?v=1', html)
-                self.assertIn('/app/static/app.js?v=14', html)
+                self.assertIn('/app/static/app.js?v=15', html)
                 self.assertIn('id="workspaces"', html)
                 self.assertIn('id="navigation"', html)
                 self.assertIn('Загружаем рабочее место', html)
@@ -475,7 +493,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn('.table-wrap:focus-visible', css)
         html = self.client.get("/app/receipts").text
         self.assertIn('/app/static/polish.css?v=2', html)
-        self.assertIn('/app/static/app.js?v=14', html)
+        self.assertIn('/app/static/app.js?v=15', html)
 
     def test_selected_palette(self):
         css = self.client.get("/app/static/styles.css").text
