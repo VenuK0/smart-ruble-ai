@@ -93,7 +93,7 @@ def main() -> None:
         page.locator("#merchant").fill("ООО Лаборатория")
         page.locator(".item-name").first.fill("резистор")
         page.locator(".item-qty").first.fill("2")
-        page.locator(".item-price").first.fill("1250.50")
+        page.locator(".item-price").first.fill("1 250,50")
         assert amount(page.locator("#receipt-total").inner_text()) == "2501"
         with page.expect_response(
             lambda r: r.url.endswith("/contracts/" + grant_id + "/validate")
