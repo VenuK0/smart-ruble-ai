@@ -55,3 +55,29 @@ test("simple comparative bars never present percentages outside 0..100",()=>{
   assert.equal(barWidth(900,500),100);
   assert.equal(barWidth(100,0),0);
 });
+
+const parseLocaleNumber=scope.SREconomics.parseLocaleNumber;
+const validateAssumptions=scope.SREconomics.validateAssumptions;
+const defaultInputs={
+  "econ-count":"5 000","econ-before":"20","econ-after":"8",
+  "econ-hour":"450","econ-maint":"200000","econ-dev":"1018000"
+};
+test("economics fields accept numbers with spaces and comma or dot decimals",()=>{
+  assert.equal(parseLocaleNumber("1 250,50"),1250.5);
+  assert.equal(parseLocaleNumber("1\u00a0250.50"),1250.5);
+  assert.equal(parseLocaleNumber("0,01"),.01);
+  const r=validateAssumptions({...defaultInputs,"econ-before":"20,5","econ-hour":"1 250,50"});
+  assert.equal(r.valid,true);
+  assert.equal(r.values["econ-count"],5000);
+  assert.equal(r.values["econ-before"],20.5);
+  assert.equal(r.values["econ-hour"],1250.5);
+});
+test("economics fields reject special characters, empty or unsupported values",()=>{
+  for(const bad of [""," ","-1","1e3","100₽","100 руб","12,345.6","Infinity","NaN","1.2.3"]){
+    assert.equal(parseLocaleNumber(bad),null,bad);
+  }
+  assert.equal(validateAssumptions({...defaultInputs,"econ-count":"1,5"}).valid,false);
+  assert.equal(validateAssumptions({...defaultInputs,"econ-hour":"100 ₽"}).errors[0].id,"econ-hour");
+  assert.equal(validateAssumptions({...defaultInputs,"econ-after":"21"}).errors[0].id,"econ-after");
+  assert.equal(validateAssumptions({...defaultInputs,"econ-dev":""}).errors[0].id,"econ-dev");
+});
