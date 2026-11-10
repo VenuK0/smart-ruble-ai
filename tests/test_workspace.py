@@ -411,7 +411,7 @@ class WorkspaceTests(unittest.TestCase):
             'window.SRAntifraud.notes',
             'Ночные операции',
             'Крупные круглые суммы',
-            'Это не вероятность мошенничества',
+            'не является процентом риска или вероятностью мошенничества',
             'не объяснение вклада признаков',
         ]:
             with self.subTest(token=token):
