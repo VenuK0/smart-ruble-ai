@@ -30,8 +30,9 @@ jobs:
           node --check src/smartruble/web/history-utils.js
           node --check src/smartruble/web/antifraud-utils.js
           node --check src/smartruble/web/economics-utils.js
+          node --check src/smartruble/web/estimate-editor.js
       - name: Test exports, navigation, receipts, ledger, anomalies and economics
-        run: node --test tests/test_csv.mjs tests/test_navigation.mjs tests/test_receipt.mjs tests/test_history.mjs tests/test_antifraud_ui.mjs tests/test_economics_ui.mjs
+        run: node --test tests/test_csv.mjs tests/test_navigation.mjs tests/test_receipt.mjs tests/test_history.mjs tests/test_antifraud_ui.mjs tests/test_economics_ui.mjs tests/test_estimate_editor.mjs
       - name: Run unit and API tests
         run: python -m unittest discover -s tests -v
       - name: Reproduce synthetic stress evaluation
