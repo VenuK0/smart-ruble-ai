@@ -185,7 +185,12 @@ def main():
         page.goto(BASE + "/app/history", wait_until="domcontentloaded")
         page.locator("#page .page-head h1").wait_for(timeout=20000)
         assert page.locator(".table-swipe-hint").first.is_visible()
-        print("OK mobile receipt field labels and table swipe hint", flush=True)
+        page.locator(".history-view").first.wait_for(timeout=20000)
+        assert page.locator(".history-view").first.inner_text().startswith("ЧЕК-")
+        assert page.locator(".history-selected-row").count() == 1
+        assert "smoke-receipt-1" in page.locator("#history-detail").inner_text()
+        assert "Исходный ID" in page.locator("#history-detail").inner_text()
+        print("OK mobile journal short numbers and selected details", flush=True)
 
         # A direct bookmarked URL, not an old saved sidebar state, drives selection.
         page.set_viewport_size({"width": 1440, "height": 900})
@@ -207,6 +212,10 @@ def main():
         assert page.locator(".af-rank-item").count() == 10
         page.locator(".af-rank-item").nth(1).click()
         assert page.locator("#af-detail .af-signal").count() == 6
+        assert page.locator("#af-detail .af-signal-peer").count() == 6
+        assert page.locator(".af-rank-teaser").count() == 10
+        assert "остальных" in page.locator("#af-detail").inner_text()
+        assert "не процент" in page.locator("#af-detail").inner_text()
         assert_layout(page, "anomaly populated")
         print("OK antifraud populated results", flush=True)
 
