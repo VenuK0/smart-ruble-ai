@@ -313,7 +313,7 @@ class WorkspaceTests(unittest.TestCase):
     def test_receipt_editor_uses_financial_document_layout(self):
         html = self.client.get("/app/receipts").text
         self.assertIn('/app/static/receipts.css?v=2', html)
-        self.assertIn('/app/static/receipt-utils.js?v=1', html)
+        self.assertIn('/app/static/receipt-utils.js?v=2', html)
         self.assertIn('/app/static/app.js?v=15', html)
         script = self.client.get("/app/static/app.js").text
         for text in [
