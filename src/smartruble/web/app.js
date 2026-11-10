@@ -140,13 +140,14 @@
       row=row||{category:"",amount:""};
       return '<div class="estimate-editor-row">'+
         '<label class="estimate-row-field"><span>Категория расходов</span>'+
-          '<select class="input estimate-category" aria-label="Категория расходов" required>'+
+          '<select class="input estimate-category" aria-label="Категория расходов" aria-required="true">'+
             '<option value="">Выберите статью</option>'+
             estimateCategories.map(function(cat){return '<option value="'+cat.id+'"'+(cat.id===row.category?' selected':'')+'>'+esc(cat.name)+'</option>';}).join("")+
           '</select></label>'+
         '<label class="estimate-row-field"><span>Лимит, ₽</span>'+
-          '<input class="input estimate-amount" type="text" inputmode="decimal" autocomplete="off" maxlength="24" placeholder="Например, 50000" aria-label="Лимит статьи в рублях" required value="'+esc(row.amount||"")+'"></label>'+
-        '<button type="button" class="estimate-remove-row" aria-label="Удалить статью" title="Удалить статью">×</button></div>';
+          '<input class="input estimate-amount" type="text" inputmode="decimal" autocomplete="off" maxlength="24" placeholder="Например, 50000" aria-label="Лимит статьи в рублях" aria-required="true" value="'+esc(row.amount||"")+'"></label>'+
+        '<button type="button" class="estimate-remove-row" aria-label="Удалить статью" title="Удалить статью">×</button>'+ 
+        '<div class="estimate-row-error" role="status" aria-live="polite"></div></div>';
     }
     root.innerHTML=section("Сметы и лимиты","Реестр смет, остатки средств и статьи расходов.")+
       '<div class="estimates-layout">'+
@@ -210,7 +211,9 @@
           amount:row.querySelector(".estimate-amount").value};
       });
     }
+    var showEstimateErrors=false;
     function setEstimateRows(rows){
+      showEstimateErrors=false;
       $("estimate-rows").innerHTML=rows.map(estimateRow).join("");
       updateEstimateEditor();
     }
@@ -219,8 +222,19 @@
       $("estimate-total").textContent=window.SREstimate.formatRub(result.totalCents);
       $("estimate-line-count").textContent="Статей: "+number(rows.length);
       $("estimate-add").disabled=rows.length>=window.SREstimate.maxRows;
-      Array.from($("estimate-rows").querySelectorAll(".estimate-remove-row")).forEach(function(btn){
-        btn.disabled=rows.length<=1;
+      Array.from($("estimate-rows").querySelectorAll(".estimate-editor-row")).forEach(function(row,i){
+        row.querySelector(".estimate-remove-row").disabled=rows.length<=1;
+        var category=row.querySelector(".estimate-category");
+        var amount=row.querySelector(".estimate-amount");
+        var message=row.querySelector(".estimate-row-error");
+        category.removeAttribute("aria-invalid");
+        amount.removeAttribute("aria-invalid");
+        var problem=showEstimateErrors&&result.errors.find(function(e){return e.index===i;});
+        message.textContent=problem?problem.message:"";
+        if(problem){
+          var categoryValid=estimateCategories.some(function(cat){return cat.id===rows[i].category;});
+          (categoryValid?amount:category).setAttribute("aria-invalid","true");
+        }
       });
       return result;
     }
@@ -267,8 +281,18 @@
       var id=$("grant-name").value.trim();
       if(!id){say("estimate-msg","Введите номер сметы.",true);$("grant-name").focus();return;}
       if(id.length>80){say("estimate-msg","Номер сметы не должен превышать 80 символов.",true);return;}
+      showEstimateErrors=true;
       var result=updateEstimateEditor();
-      if(!result.valid){say("estimate-msg",result.message,true);return;}
+      if(!result.valid){
+        say("estimate-msg",result.message,true);
+        var first=result.errors[0];
+        if(first){
+          var row=$("estimate-rows").querySelectorAll(".estimate-editor-row")[first.index];
+          var input=row.querySelector('[aria-invalid="true"]');
+          if(input)input.focus();
+        }
+        return;
+      }
       var button=$("estimate-form").querySelector("button[type=submit]");
       button.disabled=true;
       try{
@@ -733,15 +757,16 @@
     ];
     function inputField(item){
       return '<div class="field econ-field"><label for="'+item.id+'">'+item.name+'</label>'+
-        '<input class="input" id="'+item.id+'" type="number" min="'+item.min+'" max="'+item.max+'" step="'+item.step+'" required value="'+item.value+'">'+
-        '<div class="field-help">'+item.help+'</div></div>';
+        '<input class="input" id="'+item.id+'" type="text" inputmode="'+(item.step===1?"numeric":"decimal")+'" autocomplete="off" aria-required="true" aria-describedby="'+item.id+'-help '+item.id+'-error" value="'+item.value+'">'+
+        '<div class="field-help" id="'+item.id+'-help">'+item.help+'</div>'+
+        '<div class="econ-field-error" id="'+item.id+'-error" role="status" aria-live="polite"></div></div>';
     }
     var placeholder='<div class="econ-empty"><div class="econ-empty-icon" aria-hidden="true">▥</div>'+
       '<h3>Расчёт ещё не выполнен</h3><p>Укажите предположения и нажмите «Рассчитать». Система сравнит низкую, базовую и высокую нагрузку.</p></div>';
     root.innerHTML=section("Экономическая оценка","Исследуйте возможный эффект автоматизации при разных предположениях о нагрузке и затратах.")+
       '<div class="econ-warning"><strong>Это сценарный расчёт, а не подтверждённая экономия.</strong> Все исходные показатели заданы в качестве предположений. Без реальных замеров, дисконтирования, налогов, рисков и затрат на интеграцию цифры нельзя считать прогнозом фактической окупаемости.</div>'+
       '<div class="econ-layout">'+
-      panel("Исходные предположения",'<div class="econ-form-body"><div class="econ-section-head"><span>ВВОДНЫЕ ДАННЫЕ</span><p>Все значения можно редактировать. Данные не сохраняются на сервере.</p></div>'+
+      panel("Исходные предположения",'<div class="econ-form-body"><div class="econ-section-head"><span>ВВОДНЫЕ ДАННЫЕ</span><p>Все значения можно редактировать. Данные не сохраняются на сервере. Используйте обычные цифры, запятую или точку для дробной части; символ ₽ вводить не нужно.</p></div>'+
         '<form id="econ-form">'+
         '<div class="econ-fields">'+assumptions.map(inputField).join("")+'</div>'+
         '<div class="econ-presets"><span>Быстрый выбор объёма:</span>'+
@@ -757,17 +782,25 @@
       '<p class="econ-footer">Методика: прямой денежный эквивалент сэкономленного рабочего времени и простая окупаемость без дисконтирования. Положительный расчётный эффект не означает реальную экономию бюджета или сокращение затрат организации.</p>';
 
     function payload(){
-      var keys=["econ-count","econ-before","econ-after","econ-hour","econ-maint","econ-dev"];
-      var values=keys.map(function(id){return Number($(id).value);});
-      if(values.some(function(v){return !Number.isFinite(v);}))throw Error("Введите корректные конечные числа во все поля.");
-      if(!Number.isInteger(values[0])||values[0]<1||values[0]>100000000)throw Error("Число отчётов должно быть целым от 1 до 100 000 000.");
-      if(values[1]<=0||values[1]>100000||values[2]<0||values[2]>values[1])
-        throw Error("Время вручную должно быть положительным, а время с системой — от нуля до ручного времени.");
-      if(values[3]<=0||values[3]>100000000||values[4]<0||values[4]>100000000000||values[5]<0||values[5]>100000000000)
-        throw Error("Проверьте стоимость часа и суммы затрат. Они должны быть неотрицательными и в пределах формы.");
-      return {workflows_per_year:values[0],manual_minutes:values[1],
-        automated_minutes:values[2],hourly_cost_rub:values[3],
-        maintenance_rub_year:values[4],development_rub:values[5]};
+      var raw={};
+      assumptions.forEach(function(item){raw[item.id]=$(item.id).value;});
+      var parsed=window.SREconomics.validateAssumptions(raw);
+      assumptions.forEach(function(item){
+        var input=$(item.id);
+        var problem=parsed.errors.find(function(e){return e.id===item.id;});
+        var note=$(item.id+"-error");
+        note.textContent=problem?problem.message:"";
+        if(problem)input.setAttribute("aria-invalid","true");
+        else input.removeAttribute("aria-invalid");
+      });
+      if(!parsed.valid){
+        $(parsed.errors[0].id).focus();
+        throw Error("Проверьте выделенные поля с исходными данными.");
+      }
+      var values=parsed.values;
+      return {workflows_per_year:values["econ-count"],manual_minutes:values["econ-before"],
+        automated_minutes:values["econ-after"],hourly_cost_rub:values["econ-hour"],
+        maintenance_rub_year:values["econ-maint"],development_rub:values["econ-dev"]};
     }
     function barRow(label,amount,max,kind){
       return '<div class="econ-breakdown-row"><div><span>'+label+'</span><strong class="'+(amount<0?'econ-negative':'')+'">'+cash(amount)+'</strong></div>'+
@@ -846,10 +879,19 @@
       $("econ-results").innerHTML="";
       say("econ-msg","");
     }
-    $("econ-form").addEventListener("input",markStale);
+    $("econ-form").addEventListener("input",function(e){
+      var input=e.target;
+      if(input && input.id && $(input.id+"-error")){
+        input.removeAttribute("aria-invalid");
+        $(input.id+"-error").textContent="";
+      }
+      markStale();
+    });
     Array.from(root.querySelectorAll(".econ-preset")).forEach(function(button){
       button.onclick=function(){
         $("econ-count").value=button.dataset.volume;
+        $("econ-count").removeAttribute("aria-invalid");
+        $("econ-count-error").textContent="";
         markStale();
       };
     });
