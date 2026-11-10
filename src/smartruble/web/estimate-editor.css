@@ -1,0 +1,132 @@
+/* SmartRubleAI v0.4 · Estimate editor.
+   Structured categories and amounts, no required ₽ character or em dash.
+   Keep visual rhythm consistent with the experimental top-navigation shell. */
+.estimate-form-body{padding:25px 29px 28px}
+.estimate-editor-intro{
+  display:grid;grid-template-columns:minmax(240px,320px) minmax(0,1fr);
+  align-items:end;gap:25px;padding-bottom:22px;margin-bottom:21px;
+  border-bottom:1px solid #EEE7E0;
+}
+.estimate-editor-id{min-width:0}
+.estimate-editor-id .field label{font-size:12px;font-weight:680}
+.estimate-editor-id .input{
+  display:block;width:100%;height:43px;min-height:43px;
+  font-size:13px;letter-spacing:.01em;
+}
+.estimate-editor-id .field-help{margin-top:8px;font-size:11px;color:#91857B}
+.estimate-editor-prompt{
+  color:#71675D;max-width:560px;line-height:1.65;
+  font-size:12.5px;margin:0 0 3px;
+}
+.estimate-editor-heading{display:flex;align-items:start;justify-content:space-between;gap:14px;margin-bottom:13px}
+.estimate-editor-heading h3{font-size:15px;font-weight:730;letter-spacing:-.2px;color:#2E2722}
+.estimate-editor-heading p{font-size:11.5px;color:#8B8075;line-height:1.5;margin-top:5px}
+.estimate-line-count{
+  flex:0 0 auto;color:#93867C;font-weight:620;font-size:10.5px;
+  background:#F6F2ED;border:1px solid #EEE4DC;padding:6px 9px;border-radius:5px;
+}
+#estimate-rows{display:grid;gap:9px;min-width:0}
+.estimate-editor-row{
+  display:grid;grid-template-columns:minmax(210px,1fr) minmax(175px,.45fr) 36px;
+  gap:12px;align-items:end;padding:12px 14px;
+  border:1px solid #E9E1D9;border-radius:8px;background:#FFFEFC;
+}
+.estimate-row-field{display:block;min-width:0}
+.estimate-row-field>span{
+  display:block;color:#74685E;font-size:10.8px;font-weight:660;
+  margin:0 0 7px;line-height:1.35;
+}
+.estimate-row-field>.input{
+  display:block;width:100%;min-width:0;max-width:none;
+  min-height:41px;height:41px;
+  font-size:13px;color:#342C26;
+  background:#FFFFFF;border:1px solid #DDD3C9;border-radius:6px;
+}
+.estimate-row-field>select.input{padding-right:34px}
+.estimate-row-field>input.input{font-variant-numeric:tabular-nums}
+.estimate-remove-row{
+  display:grid;place-items:center;width:36px;height:41px;
+  border:1px solid #EAE0DA;background:#FBF8F5;color:#927B73;
+  font-size:20px;border-radius:6px;cursor:pointer;line-height:1;
+}
+.estimate-remove-row:hover:not(:disabled){color:#A22A2F;background:#FFF3F1;border-color:#E7BDB9}
+.estimate-remove-row:disabled{opacity:.36;cursor:not-allowed}
+.estimate-editor-controls{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  margin:14px 0 19px;
+}
+.estimate-editor-controls>span{color:#94877C;font-size:11px}
+.estimate-editor-total{
+  display:flex;justify-content:space-between;align-items:center;gap:16px;
+  padding:19px 22px;margin:0 0 15px;
+  background:#F8F5F1;border:1px solid #E8DFD5;border-radius:8px;
+}
+.estimate-editor-total span{display:block;font-size:12.5px;font-weight:690;color:#40352E}
+.estimate-editor-total small{display:block;color:#8C8075;font-size:11px;margin-top:6px}
+.estimate-editor-total output{
+  color:#25201D;font-size:26px;font-weight:760;letter-spacing:-.7px;
+  white-space:nowrap;font-variant-numeric:tabular-nums;
+}
+.estimate-import{
+  border:1px solid #EDE5DD;background:#FFFEFC;border-radius:7px;
+  margin:0 0 20px;overflow:hidden;
+}
+.estimate-import summary{
+  display:flex;align-items:center;gap:9px;
+  cursor:pointer;list-style:none;padding:14px 17px;
+  color:#675B52;font-size:11.5px;font-weight:690;
+}
+.estimate-import summary::-webkit-details-marker{display:none}
+.estimate-import summary::before{
+  display:inline-flex;content:"+";font-size:17px;font-weight:400;
+  color:#9B8476;align-items:center;justify-content:center;
+  width:17px;flex:0 0 17px;
+}
+.estimate-import[open] summary::before{content:"−"}
+.estimate-import summary:hover{color:#A6272A;background:#FAF8F5}
+.estimate-import-body{padding:0 17px 17px;border-top:1px solid #F0E9E2}
+.estimate-import-body label{display:block;font-size:11.5px;font-weight:690;margin:14px 0 7px}
+.estimate-import-body textarea{
+  width:100%;min-height:102px;resize:vertical;max-height:320px;
+  padding:12px 13px;background:#fff;border:1px solid #DDD4CA;border-radius:6px;
+  font-size:12.5px;line-height:1.6;
+}
+.estimate-import-body p{margin:9px 0 13px;color:#83756A;font-size:11.5px;line-height:1.55}
+.estimate-import-body code{
+  padding:1px 5px;background:#F5F0E9;border:1px solid #EAE0D7;
+  border-radius:4px;font-size:11px;color:#46352C;
+}
+.estimate-import-body .form-message{margin-top:9px}
+#estimate-form .form-actions{gap:10px;margin-top:0}
+#estimate-form .form-actions .btn{min-height:40px}
+#estimate-form #estimate-msg{margin-top:12px;line-height:1.55}
+@media(max-width:900px){
+  .estimate-editor-intro{grid-template-columns:minmax(0,1fr);gap:10px}
+  .estimate-editor-id{max-width:420px}
+  .estimate-editor-total output{font-size:23px}
+}
+@media(max-width:680px){
+  .estimate-form-body{padding:17px}
+  .estimate-editor-row{
+    grid-template-columns:minmax(0,1fr) 43px;
+    padding:12px;gap:9px;
+  }
+  .estimate-row-field:nth-child(1){grid-column:1;grid-row:1}
+  .estimate-row-field:nth-child(2){grid-column:1;grid-row:2}
+  .estimate-remove-row{grid-column:2;grid-row:1/3;align-self:center;width:43px;min-height:43px}
+  .estimate-row-field>.input{height:43px;min-height:43px;font-size:16px}
+  .estimate-editor-heading{align-items:flex-start}
+  .estimate-editor-heading h3{font-size:14px}
+  .estimate-editor-total{padding:15px}
+  .estimate-editor-total output{font-size:20px}
+  .estimate-import-body textarea{font-size:16px}
+}
+@media(max-width:380px){
+  .estimate-editor-total{align-items:flex-start;flex-direction:column;gap:11px}
+  .estimate-editor-total output{font-size:23px}
+  .estimate-line-count{font-size:10px}
+}
+@media print{
+  .estimate-editor-controls,.estimate-import,#estimate-form .form-actions{display:none!important}
+  .estimate-editor-row{break-inside:avoid}
+}
