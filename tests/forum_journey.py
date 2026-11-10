@@ -154,12 +154,19 @@ def main() -> None:
         page.wait_for_function(
             "() => document.querySelectorAll('.history-view').length === 2"
         )
+        assert {b.strip() for b in page.locator(".history-view").all_inner_texts()} == {
+            "ЧЕК-0001", "ЧЕК-0002"
+        }
+        page.locator(".history-view").nth(1).click()
+        assert first["receipt_id"] in page.locator("#history-detail").inner_text()
+        assert page.locator(".history-selected-row").count() == 1
         page.locator("#history-search").fill("Лак")
         page.wait_for_function(
             "() => document.querySelectorAll('.history-view').length === 1"
         )
         assert page.locator("#history-stat-count").inner_text().strip() == "1"
         assert second["receipt_id"] in page.locator("#history-detail").inner_text()
+        assert page.locator(".history-view").first.inner_text() == "ЧЕК-0002"
         assert second["items"][0]["reason"] in page.locator("#history-detail").inner_text()
         assert "Цепочка записей проверена" in page.locator("#audit-state").inner_text()
         page.locator("#history-status").select_option(second["status"])
