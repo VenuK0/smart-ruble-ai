@@ -110,7 +110,7 @@ def main():
             page.locator(".estimate-editor-row").last.locator(".estimate-remove-row").click()
             assert page.locator(".estimate-editor-row").count() == 3
             page.locator(".estimate-import summary").click()
-            page.locator("#estimate-text").fill("Материалы - 50000\\nОборудование: 120000\\nУслуги - 10000")
+            page.locator("#estimate-text").fill("Материалы - 50000\nОборудование: 120000\nУслуги - 10000")
             page.locator("#estimate-import-btn").click()
             assert page.locator(".estimate-editor-row").count() == 3
             assert "Импортировано" in page.locator("#estimate-import-msg").inner_text()
