@@ -114,6 +114,12 @@ def main():
             page.locator("#estimate-import-btn").click()
             assert page.locator(".estimate-editor-row").count() == 3
             assert "Импортировано" in page.locator("#estimate-import-msg").inner_text()
+            page.locator(".estimate-editor-row").nth(1).locator(".estimate-amount").fill("oops")
+            page.locator('#estimate-form button[type="submit"]').click()
+            assert page.locator(".estimate-editor-row").nth(1).locator(".estimate-amount").get_attribute("aria-invalid") == "true"
+            assert page.locator(".estimate-editor-row").nth(1).locator(".estimate-row-error").is_visible()
+            page.locator(".estimate-editor-row").nth(1).locator(".estimate-amount").fill("120000")
+            assert page.locator(".estimate-editor-row").nth(1).locator(".estimate-amount").get_attribute("aria-invalid") is None
             assert_layout(page, f"{width}px populated estimate editor")
             page.screenshot(path=str(ARTIFACTS / f"{width}-estimate-editor.png"), full_page=True)
         print("OK interactive typed estimate editor and keyboard-friendly text import", flush=True)
@@ -168,6 +174,14 @@ def main():
         page.locator("#page .page-head h1").wait_for(timeout=20000)
         for label in (".qty-label", ".price-label", ".total-label"):
             assert page.locator("#receipt-lines " + label).first.is_visible(), label
+        page.locator("#merchant").fill("ООО Тест")
+        page.locator(".item-name").first.fill("Товар")
+        page.locator(".item-price").first.fill("12,345")
+        page.locator("#receipt-submit").click()
+        assert page.locator(".item-price").first.get_attribute("aria-invalid") == "true"
+        assert page.locator(".receipt-row-error").first.is_visible()
+        page.locator(".item-price").first.fill("12,34")
+        assert page.locator(".item-price").first.get_attribute("aria-invalid") is None
         page.goto(BASE + "/app/history", wait_until="domcontentloaded")
         page.locator("#page .page-head h1").wait_for(timeout=20000)
         assert page.locator(".table-swipe-hint").first.is_visible()
@@ -201,6 +215,15 @@ def main():
         page.locator(".econ-chart").wait_for(timeout=20000)
         assert page.locator(".econ-case").count() == 3
         assert page.locator(".econ-table tbody tr").count() == 3
+        page.locator("#econ-before").fill("20,5")
+        page.locator("#econ-hour").fill("1 250,50")
+        page.locator("#econ-submit").click()
+        page.locator(".econ-chart").wait_for(timeout=20000)
+        assert page.locator(".econ-case").count() == 3
+        page.locator("#econ-count").fill("5,5")
+        page.locator("#econ-submit").click()
+        assert page.locator("#econ-count").get_attribute("aria-invalid") == "true"
+        assert page.locator("#econ-count-error").is_visible()
         assert_layout(page, "economics populated")
         print("OK economics results and chart", flush=True)
 
