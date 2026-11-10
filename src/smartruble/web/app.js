@@ -23,7 +23,7 @@
   function empty(title,help){return '<div class="empty"><strong>'+title+'</strong>'+help+'</div>';}
   function notice(){return '<div class="inline-note"><strong>Демонстрационная версия.</strong> Все операции выполняются на синтетических данных. Средства не списываются, интеграции с платёжными системами нет.</div>';}
   function table(head,rows,emptyText){return '<div class="table-wrap" tabindex="0" role="region" aria-label="Таблица данных с горизонтальной прокруткой"><table><thead><tr>'+head.map(function(h){return '<th'+(h.num?' class="number"':'')+'>'+esc(h.title||h)+'</th>';}).join("")+'</tr></thead><tbody>'+(rows.length?rows.join(""):'<tr><td colspan="'+head.length+'" class="table-empty">'+esc(emptyText||"Нет данных")+'</td></tr>')+'</tbody></table></div><div class="table-swipe-hint" aria-hidden="true">Проведите по таблице влево, чтобы увидеть остальные столбцы.</div>';}
-  function tr(cells){return '<tr>'+cells.map(function(v){return '<td>'+v+'</td>';}).join("")+'</tr>';}
+  function tr(cells,rowClass){return '<tr'+(rowClass?' class="'+esc(rowClass)+'"':"")+'>'+cells.map(function(v){return '<td>'+v+'</td>';}).join("")+'</tr>';}
   function field(id,label,value,type){return '<div class="field"><label for="'+id+'">'+label+'</label><input class="input" id="'+id+'" type="'+(type||"text")+'" value="'+esc(value)+'"></div>';}
   function formMessage(id){return '<div class="form-message" role="status" aria-live="polite" id="'+id+'"></div>';}
   function say(id,msg,error){var e=$(id);if(e){e.textContent=msg;e.className="form-message"+(error?" error":"");}}
@@ -555,6 +555,7 @@
 
     var entries=[];
     var matched=[];
+    var shortNumbers=Object.create(null);
     var selectedId="";
 
     function detail(entry){
@@ -571,8 +572,10 @@
           '<div class="history-item-values">'+badge(item.decision)+'<strong>'+cash(item.amount)+'</strong></div></div>';
       }).join("");
       $("history-detail").innerHTML=
-        '<div class="history-detail-header"><span class="history-detail-label">Номер чека</span>'+
-        '<strong>'+esc(r.receipt_id)+'</strong><div>'+badge(r.status)+'</div></div>'+
+        '<div class="history-detail-header"><span class="history-detail-label">Номер в текущем журнале</span>'+
+        '<strong>'+esc(shortNumbers[r.receipt_id]||"Чек")+'</strong>'+
+        '<div class="history-original-id"><span>Исходный ID:</span><code>'+esc(r.receipt_id)+'</code></div>'+
+        '<div>'+badge(r.status)+'</div></div>'+
         '<dl class="history-facts"><dt>Дата</dt><dd>'+dateLabel(entry.ts)+'</dd>'+
         '<dt>Продавец</dt><dd>'+esc(r.merchant)+'</dd>'+
         '<dt>Одобрено</dt><dd>'+cash(r.approved)+'</dd>'+
@@ -586,7 +589,7 @@
     function display(){
       var q=$("history-search").value;
       var status=$("history-status").value;
-      matched=window.SRHistory.filter(entries,q,status);
+      matched=window.SRHistory.filter(entries,q,status,shortNumbers);
       var totals=window.SRHistory.summarize(matched);
       $("history-stat-count").textContent=number(totals.count);
       $("history-stat-approved").textContent=cash(totals.approved);
@@ -600,15 +603,16 @@
         var r=entry.record;
         return tr([
           dateLabel(entry.ts),
-          '<button type="button" class="history-view" data-index="'+i+'" aria-pressed="'+(r.receipt_id===selectedId?'true':'false')+'" aria-label="Подробнее о чеке '+esc(r.receipt_id)+'">'+esc(r.receipt_id)+'</button>',
+          '<span class="history-view-wrap"><button type="button" class="history-view" data-index="'+i+'" aria-pressed="'+(r.receipt_id===selectedId?'true':'false')+'" aria-label="Открыть '+esc(shortNumbers[r.receipt_id]||r.receipt_id)+'">'+esc(shortNumbers[r.receipt_id]||r.receipt_id)+'</button>'+
+          (r.receipt_id===selectedId?'<small class="history-selected-note">Выбран</small>':'')+'</span>',
           '<span class="history-merchant">'+esc(r.merchant)+'</span>',
           badge(r.status),
           '<strong class="history-amount">'+cash(Number(r.approved||0)+Number(r.review||0)+Number(r.personal_pay||0))+'</strong>'
-        ]);
+        ],r.receipt_id===selectedId?"history-selected-row":"");
       });
       $("history-table").innerHTML=table(["Дата","Чек","Продавец","Решение",{title:"Сумма",num:true}],rows,
         entries.length?"Ничего не найдено. Попробуйте изменить фильтр.":"Здесь пока нет операций. Проверьте первый чек.");
-      $("history-count").textContent="Показано "+number(matched.length)+" из "+number(entries.length)+" последних записей. Экспорт учитывает фильтры.";
+      $("history-count").textContent="Показано "+number(matched.length)+" из "+number(entries.length)+" последних записей. Короткие номера действуют в текущем журнале; CSV содержит исходные ID.";
       detail(matched.find(function(e){return e.record.receipt_id===selectedId;})||null);
     }
 
@@ -619,6 +623,7 @@
       try{
         var result=await api("/contracts/"+encodeURIComponent(active)+"/history");
         entries=(result.entries||[]).slice().reverse();
+        shortNumbers=window.SRHistory.shortLabels(entries);
         $("audit-state").textContent=result.chain_valid?
           "Цепочка записей проверена":"Нарушена целостность журнала";
         $("audit-state").className="history-audit "+(result.chain_valid?"ok":"bad");
@@ -644,6 +649,11 @@
       if(!Number.isInteger(index)||index<0||index>=matched.length)return;
       selectedId=matched[index].record.receipt_id;
       display();
+      var selectedButton=$("history-table").querySelector('.history-view[aria-pressed="true"]');
+      if(selectedButton)selectedButton.focus({preventScroll:true});
+      if(window.matchMedia&&window.matchMedia("(max-width: 1600px)").matches){
+        $("history-detail").scrollIntoView({behavior:"smooth",block:"start"});
+      }
     };
     $("history-export").onclick=function(){
       if(!matched.length){toast("Нет операций для выгрузки",true);return;}
