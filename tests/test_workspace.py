@@ -357,8 +357,8 @@ class WorkspaceTests(unittest.TestCase):
 
     def test_transaction_history_has_filterable_ledger_and_selected_details(self):
         html = self.client.get("/app/history").text
-        self.assertIn('/app/static/history.css?v=1', html)
-        self.assertIn('/app/static/history-utils.js?v=1', html)
+        self.assertIn('/app/static/history.css?v=', html)
+        self.assertIn('/app/static/history-utils.js?v=', html)
         self.assertIn('/app/static/app.js?v=', html)
         js = self.client.get("/app/static/app.js").text
         for token in [
@@ -397,8 +397,8 @@ class WorkspaceTests(unittest.TestCase):
 
     def test_anomaly_dashboard_assets_and_explanations(self):
         html = self.client.get("/app/antifraud").text
-        self.assertIn('/app/static/antifraud.css?v=1', html)
-        self.assertIn('/app/static/antifraud-utils.js?v=1', html)
+        self.assertIn('/app/static/antifraud.css?v=', html)
+        self.assertIn('/app/static/antifraud-utils.js?v=', html)
         self.assertIn('/app/static/app.js?v=', html)
         for path in ["/app/static/antifraud.css", "/app/static/antifraud-utils.js"]:
             self.assertEqual(self.client.get(path).status_code, 200)
