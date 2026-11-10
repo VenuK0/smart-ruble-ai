@@ -317,8 +317,8 @@
       '<span class="receipt-mobile-label qty-label" aria-hidden="true">Кол-во</span>'+
       '<span class="receipt-mobile-label price-label" aria-hidden="true">Цена, ₽</span>'+
       '<span class="receipt-mobile-label total-label" aria-hidden="true">Сумма</span>'+
-      '<input class="input item-qty" type="number" min="0.01" max="100000" step="any" inputmode="decimal" aria-label="Количество" required value="'+esc(qty)+'">'+
-      '<input class="input item-price" type="number" min="0.01" max="1000000000" step="0.01" inputmode="decimal" aria-label="Цена за единицу, ₽" required value="'+esc(price)+'">'+
+      '<input class="input item-qty" type="text" inputmode="decimal" maxlength="24" aria-label="Количество" required value="'+esc(qty)+'">'+
+      '<input class="input item-price" type="text" inputmode="decimal" maxlength="24" aria-label="Цена за единицу, ₽" required value="'+esc(price)+'">'+
       '<output class="receipt-line-total" aria-label="Сумма позиции">—</output>'+
       '<button class="remove-item" type="button" title="Удалить позицию" aria-label="Удалить позицию">×</button></div>';
   }
@@ -343,7 +343,7 @@
         '<div class="field receipt-merchant-field"><label for="merchant">Продавец</label>'+
         '<input class="input" id="merchant" placeholder="Название организации или магазина" maxlength="200" required autocomplete="off">'+
         '<div class="field-help">Данные используются только для демонстрационной проверки.</div></div>'+
-        '<div class="receipt-items-head"><div><h3>Состав покупки</h3><p>Укажите наименование, количество и цену каждой позиции.</p></div>'+
+        '<div class="receipt-items-head"><div><h3>Состав покупки</h3><p>Укажите товар, количество и цену обычными цифрами. Копейки можно вводить через запятую; знак ₽ не нужен.</p></div>'+
         '<button class="btn secondary btn-sm" type="button" id="receipt-example">Заполнить пример</button></div>'+
         '<div class="receipt-row receipt-columns" aria-hidden="true"><span>Наименование</span><span>Кол-во</span><span>Цена, ₽</span><span>Сумма</span><span></span></div>'+
         '<div id="receipt-lines">'+receiptRow({name:"",qty:1,price:""})+'</div>'+
@@ -433,7 +433,7 @@
       if(!check.valid){say("receipt-msg",check.message,true);return;}
       var payload={id:draftId||("demo-"+(typeof crypto!=="undefined"&&crypto.randomUUID?
         crypto.randomUUID():Date.now()+"-"+Math.random().toString(16).slice(2))),
-        merchant:merchant,items:raw.map(function(x){return {name:x.name,qty:Number(x.qty),price:Number(x.price)};})};
+        merchant:merchant,items:raw.map(function(x){return {name:x.name,qty:Number(window.SRReceipt.normalizeDecimal(x.qty)),price:Number(window.SRReceipt.normalizeDecimal(x.price))};})};
       draftId=payload.id;
       var submit=$("receipt-submit");
       submit.disabled=true;submit.textContent="Проверяем…";
