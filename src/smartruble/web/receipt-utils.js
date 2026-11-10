@@ -6,7 +6,7 @@
   "use strict";
   function normalizeDecimal(value){
     // Accept decimal comma and space-grouped thousands on a normal keyboard.
-    return String(value==null?"":value).trim().replace(/[\\s\\u00a0\\u202f]/g,"").replace(",",".");
+    return String(value==null?"":value).trim().replace(/[\s\u00a0\u202f]/g,"").replace(",",".");
   }
   function inspect(items){
     var totalCents=0;
