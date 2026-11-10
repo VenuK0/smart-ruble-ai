@@ -7,8 +7,8 @@
   // Text inputs avoid locale-specific browser number widgets. Strictly accept
   // ordinary digits, spaces for thousands, and comma or dot as the decimal mark.
   function parseLocaleNumber(raw){
-    var value=String(raw==null?"":raw).trim().replace(/[\\s\\u00a0\\u202f]/g,"");
-    if(!/^\\d+(?:[.,]\\d+)?$/.test(value))return null;
+    var value=String(raw==null?"":raw).trim().replace(/[\s\u00a0\u202f]/g,"");
+    if(!/^\d+(?:[.,]\d+)?$/.test(value))return null;
     var number=Number(value.replace(",","."));
     return Number.isFinite(number)?number:null;
   }
