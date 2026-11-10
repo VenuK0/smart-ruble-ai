@@ -55,7 +55,7 @@
  }
  function comparisonTeaser(item){
    var highlights=comparisonHighlights(item);
-   return highlights.length?highlights[0].replace(/\\.$/,""):
+   return highlights.length?highlights[0].replace(/\.$/,""):
      "Оценка основана на сочетании признаков";
  }
  root.SRAntifraud={percent:percent,barPositions:barPositions,notes:notes,
