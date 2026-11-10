@@ -53,3 +53,17 @@ test("one invalid line cannot silently pass the whole check",()=>{
   assert.equal(r.total,2);
   assert.deepEqual(Array.from(r.amounts),[2,null]);
 });
+
+test("decimal comma and typed thousand separators work without currency glyph",()=>{
+  const x=inspect([{name:"Резистор",qty:"2",price:"1 250,50"}]);
+  assert.equal(x.valid,true);
+  assert.equal(x.total,2501);
+  const y=inspect([{name:"Жидкость",qty:"1,5",price:"100,00"}]);
+  assert.equal(y.valid,true);
+  assert.equal(y.total,150);
+});
+test("currency glyph and wrong decimal formats are rejected in numeric fields",()=>{
+  for(const raw of ["12₽","12 руб","1.2.3","2,345","1e3"]){
+    assert.equal(inspect([{name:"Товар",qty:"1",price:raw}]).valid,false);
+  }
+});
