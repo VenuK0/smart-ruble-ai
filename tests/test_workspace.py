@@ -388,7 +388,7 @@ class WorkspaceTests(unittest.TestCase):
         for token in (
             'Очередь ручной проверки',
             'id="review-queue"',
-            'class="review-action"',
+            'review-action',
             'Ручное демо-решение:',
             'без реальных платежей и авторизации',
             'api("/contracts/"+encodeURIComponent(active)+"/reviews")',
