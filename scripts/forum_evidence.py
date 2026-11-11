@@ -258,6 +258,68 @@ def summary(report):
     ]) + "\n"
 
 
+def save_figures(report, directory):
+    """Two factual visuals for the defense, drawn directly from per-seed results."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    plt.rcParams["font.family"] = "DejaVu Sans"
+    saved = []
+
+    trials = report["classifier"]["per_seed"]
+    xs = list(range(len(trials)))
+    names = [str(row["seed"]) for row in trials]
+    share = lambda field: [100 * row[field] / row["n_test"] for row in trials]
+    approved = share("auto_approved")
+    rejected = share("auto_rejected")
+    manual = share("manual_review")
+    fig, ax = plt.subplots(figsize=(9.2, 4.8), dpi=145)
+    ax.bar(xs, approved, color="#2A7966", label="Автоодобрено")
+    ax.bar(xs, rejected, bottom=approved, color="#C67B65", label="Автоотклонено")
+    ax.bar(xs, manual, bottom=[a + r for a, r in zip(approved, rejected)],
+           color="#CFCAC3", label="Передано на проверку")
+    ax.set_xticks(xs, names)
+    ax.set_ylim(0, 103)
+    ax.set_ylabel("Доля позиций, %")
+    ax.set_xlabel("Номер случайного набора (seed)")
+    ax.set_title("Распределение решений на ранее невиданных товарах\n"
+                 "Синтетические данные; все разрешенные статьи доступны")
+    ax.legend(loc="upper right", ncol=3, fontsize=9)
+    ax.grid(axis="y", alpha=0.15)
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    filename = "classification-decisions.png"
+    fig.savefig(directory / filename)
+    saved.append(filename)
+    plt.close(fig)
+
+    trials = report["antifraud"]["per_seed"]
+    xs = list(range(len(trials)))
+    base = [100 * row["found_top_k"] / row["planted"] for row in trials]
+    masked = [100 * row["found_top_k_masked"] / row["planted"] for row in trials]
+    fig, ax = plt.subplots(figsize=(9.2, 4.8), dpi=145)
+    ax.bar([x - 0.2 for x in xs], base, width=0.38, color="#2A7966",
+           label="Исходные синтетические сценарии")
+    ax.bar([x + 0.2 for x in xs], masked, width=0.38, color="#B66A57",
+           label="После маскировки времени и сумм")
+    ax.set_xticks(xs, [str(row["seed"]) for row in trials])
+    ax.set_ylim(0, 108)
+    ax.set_ylabel("Доля найденных заложенных продавцов в top-k, %")
+    ax.set_xlabel("Номер случайного набора (seed)")
+    ax.set_title("Стресс-тест обнаружения аномалий\n"
+                 "Синтетика; снижение показателя не экстраполируется на реальные данные")
+    ax.legend(loc="lower left", fontsize=9)
+    ax.grid(axis="y", alpha=0.15)
+    ax.set_axisbelow(True)
+    fig.tight_layout()
+    filename = "antifraud-stress-test.png"
+    fig.savefig(directory / filename)
+    saved.append(filename)
+    plt.close(fig)
+    return saved
+
+
 def write_bundle(report, directory):
     directory.mkdir(parents=True, exist_ok=True)
     from io import StringIO
@@ -279,6 +341,8 @@ def write_bundle(report, directory):
         raw = contents.encode("utf-8")
         (directory / filename).write_bytes(raw)
         checksums[filename] = hashlib.sha256(raw).hexdigest()
+    for filename in save_figures(report, directory):
+        checksums[filename] = hashlib.sha256((directory / filename).read_bytes()).hexdigest()
     (directory / "manifest.sha256.json").write_text(
         json.dumps(checksums, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
