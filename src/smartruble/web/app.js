@@ -381,7 +381,7 @@
         '<button class="btn primary receipt-new" id="receipt-new" type="button" hidden>Новый чек</button></div>'+
         formMessage("receipt-msg")+'</form></div>')+
       panel("Результат проверки",'<div id="receipt-result" aria-live="polite">'+resultPlaceholder+'</div>')+
-      '</div><p class="receipt-footnote">Результаты носят демонстрационный характер: нет списания реальных денег или подключения к платёжной инфраструктуре. «На проверке» означает необходимость отдельного решения специалиста; ручное согласование в этой версии не реализовано.</p>';
+      '</div><p class="receipt-footnote">Результаты носят демонстрационный характер: нет списания реальных денег или подключения к платёжной инфраструктуре. «На проверке» означает необходимость решения специалиста. В разделе «История операций» доступна демонстрационная очередь ручных решений (без реальных платежей и авторизации).</p>';
 
     var form=$("receipt-form");
     var locked=false;
@@ -571,7 +571,7 @@
         return;
       }
       var options=Object.keys(estimate.limits||{}).map(function(key){
-        return '<option value="'+esc(key)+'">'+esc(labels[key]||key)+' · доступно '+cash(Number(estimate.limits[key])-Number(estimate.spent[key]||0))+'</option>';
+        return '<option value="'+esc(key)+'">'+esc(labels[key]||key)+' · доступно '+cash(Number(estimate.limits[key])-Number((current()||estimate).spent[key]||0))+'</option>';
       }).join("");
       var rows=pending.concat(resolved).map(function(item){
         var index=reviews.indexOf(item);
