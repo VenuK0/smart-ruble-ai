@@ -546,23 +546,23 @@
       '<div class="history-notice"><strong>Только локальная симуляция.</strong> Решения в этой очереди демонстрационные: нет пользователей, ролей, электронной подписи и реальных списаний. Используйте только вымышленные данные.</div>'+
       '<div class="history-stats">'+
         '<div><span>Операций в выборке</span><strong id="history-stat-count">0</strong></div>'+
-        '<div><span>Условно одобрено</span><strong id="history-stat-approved">0 ₽</strong></div>'+
-        '<div><span>На проверке при создании чека</span><strong id="history-stat-review">0 ₽</strong></div>'+
-        '<div><span>Отклонено</span><strong id="history-stat-rejected">0 ₽</strong></div>'+
+        '<div><span>Одобрено с учётом ручных решений</span><strong id="history-stat-approved">0 ₽</strong></div>'+
+        '<div><span>Ожидает решения сейчас</span><strong id="history-stat-review">0 ₽</strong></div>'+
+        '<div><span>Отклонено с учётом ручных решений</span><strong id="history-stat-rejected">0 ₽</strong></div>'+
       '</div>'+
       panel("Очередь ручной проверки",'<div class="review-queue-info"><div><strong id="review-count">Загружаем решения…</strong><p>Ручное согласование позиции изменяет лимит только при одобрении и записывается отдельным событием в проверяемый журнал. Исходный чек остаётся неизменным.</p></div><button id="review-reload" type="button" class="btn secondary btn-sm">Обновить очередь</button></div>'+
         '<div id="review-queue" class="review-queue" aria-live="polite">'+empty("Загрузка","Получаем спорные позиции.")+'</div>')+
       '<div class="history-layout">'+
         panel("Журнал операций",'<div class="history-toolbar">'+
           '<div class="history-filter-area"><div class="field"><label for="history-search">Поиск</label><input id="history-search" class="input" placeholder="Чек, продавец или товар" autocomplete="off"></div>'+
-          '<div class="field"><label for="history-status">Результат</label><select id="history-status"><option value="">Все решения</option><option value="APPROVED">Одобрено</option><option value="NEEDS_REVIEW">На проверке</option><option value="PARTIAL">Частично</option></select></div></div>'+
+          '<div class="field"><label for="history-status">Итоговое состояние</label><select id="history-status"><option value="">Все решения</option><option value="APPROVED">Одобрено</option><option value="NEEDS_REVIEW">На проверке</option><option value="PARTIAL">Частично</option><option value="REJECTED">Отклонено</option></select></div></div>'+
           '<div class="history-toolbar-actions"><button id="history-export" class="btn secondary btn-sm" type="button" disabled>Экспорт CSV</button>'+
           '<button id="history-reload" class="btn secondary btn-sm" type="button">Обновить</button></div></div>'+
           '<div id="history-table">'+empty("Загрузка","Получаем записи журнала.")+'</div>'+
           '<div id="history-count" class="history-filter-count">Проверяем данные…</div>')+
         panel("Детали операции",'<div id="history-detail" class="history-detail">'+
           '<div class="history-detail-empty">Выберите запись в журнале для просмотра позиций и причин решений.</div></div>')+
-      '</div><p class="history-footnote">История ограничена последними 100 операциями выбранной сметы. Данные находятся в памяти сервера и сбрасываются после перезапуска; это не постоянный платёжный реестр.</p>');
+      '</div><p class="history-footnote">В журнале показаны итоговые суммы и статусы с учётом отдельных решений человека. Первоначальные записи чеков неизменны. История ограничена последними 100 чеками выбранной сметы; данные исчезают после перезапуска сервера.</p>');
     if(!estimate)return;
 
     var entries=[];
@@ -609,6 +609,7 @@
         return;
       }
       var r=entry.record||{};
+      var final=window.SRHistory.outcome(entry,reviews);
       var items=(r.items||[]).map(function(item,index){
         var category=item.category==="other"?"Не определена":(labels[item.category]||item.category||"Не определена");
         var review=reviews.find(function(x){return x.receipt_id===r.receipt_id&&x.item_index===index;});
@@ -626,12 +627,12 @@
         '<div class="history-detail-header"><span class="history-detail-label">Номер в текущем журнале</span>'+
         '<strong>'+esc(shortNumbers[r.receipt_id]||"Чек")+'</strong>'+
         '<div class="history-original-id"><span>Исходный ID:</span><code>'+esc(r.receipt_id)+'</code></div>'+
-        '<div>'+badge(r.status)+'</div></div>'+
+        '<div>'+badge(final.status)+'<small class="history-original-status">Первичное решение: '+esc(statusTitle[r.status]||r.status)+'</small></div></div>'+
         '<dl class="history-facts"><dt>Дата</dt><dd>'+dateLabel(entry.ts)+'</dd>'+
         '<dt>Продавец</dt><dd>'+esc(r.merchant)+'</dd>'+
-        '<dt>Одобрено</dt><dd>'+cash(r.approved)+'</dd>'+
-        '<dt>Требует проверки</dt><dd>'+cash(r.review)+'</dd>'+
-        '<dt>Отклонено</dt><dd>'+cash(r.personal_pay)+'</dd></dl>'+
+        '<dt>Итого одобрено</dt><dd>'+cash(final.approved)+'</dd>'+
+        '<dt>Ожидает решения</dt><dd>'+cash(final.review)+'</dd>'+
+        '<dt>Итого отклонено</dt><dd>'+cash(final.rejected)+'</dd></dl>'+
         '<div class="history-items-heading">Позиции чека <span>'+number((r.items||[]).length)+'</span></div>'+
         (items||'<div class="history-items-empty">Сведения о позициях отсутствуют.</div>')+
         '<p class="history-detail-foot">Отображены первоначальные решения модели. Если позиция рассмотрена человеком в демо-очереди, итог указан отдельно; исходная запись не переписывается.</p>';
@@ -640,8 +641,8 @@
     function display(){
       var q=$("history-search").value;
       var status=$("history-status").value;
-      matched=window.SRHistory.filter(entries,q,status,shortNumbers);
-      var totals=window.SRHistory.summarize(matched);
+      matched=window.SRHistory.filter(entries,q,status,shortNumbers,reviews);
+      var totals=window.SRHistory.summarize(matched,reviews);
       $("history-stat-count").textContent=number(totals.count);
       $("history-stat-approved").textContent=cash(totals.approved);
       $("history-stat-review").textContent=cash(totals.review);
@@ -652,18 +653,20 @@
       }
       var rows=matched.map(function(entry,i){
         var r=entry.record;
+        var final=window.SRHistory.outcome(entry,reviews);
         return tr([
           dateLabel(entry.ts),
           '<span class="history-view-wrap"><button type="button" class="history-view" data-index="'+i+'" aria-pressed="'+(r.receipt_id===selectedId?'true':'false')+'" aria-label="Открыть '+esc(shortNumbers[r.receipt_id]||r.receipt_id)+'">'+esc(shortNumbers[r.receipt_id]||r.receipt_id)+'</button>'+
           (r.receipt_id===selectedId?'<small class="history-selected-note">Выбран</small>':'')+'</span>',
           '<span class="history-merchant">'+esc(r.merchant)+'</span>',
-          badge(r.status),
-          '<strong class="history-amount">'+cash(Number(r.approved||0)+Number(r.review||0)+Number(r.personal_pay||0))+'</strong>'
+          '<span class="history-current-status">'+badge(final.status)+
+            (r.status!==final.status?'<small class="history-model-status">Первично: '+esc(statusTitle[r.status]||r.status)+'</small>':'')+'</span>',
+          '<strong class="history-amount">'+cash(final.approved+final.review+final.rejected)+'</strong>'
         ],r.receipt_id===selectedId?"history-selected-row":"");
       });
-      $("history-table").innerHTML=table(["Дата","Чек","Продавец","Решение",{title:"Сумма",num:true}],rows,
+      $("history-table").innerHTML=table(["Дата","Чек","Продавец","Итоговое решение",{title:"Сумма",num:true}],rows,
         entries.length?"Ничего не найдено. Попробуйте изменить фильтр.":"Здесь пока нет операций. Проверьте первый чек.");
-      $("history-count").textContent="Показано "+number(matched.length)+" из "+number(entries.length)+" последних записей. Короткие номера действуют в текущем журнале; CSV содержит исходные ID.";
+      $("history-count").textContent="Показано "+number(matched.length)+" из "+number(entries.length)+" последних чеков. Статусы учитывают ручные решения; CSV сохраняет исходные ID и оба статуса.";
       detail(matched.find(function(e){return e.record.receipt_id===selectedId;})||null);
     }
 
@@ -745,9 +748,11 @@
     $("history-export").onclick=function(){
       if(!matched.length){toast("Нет операций для выгрузки",true);return;}
       window.SRCSV.download("smartruble-operations.csv",
-        ["Дата","Смета","Номер чека","Продавец","Результат","Одобрено, ₽","На проверке, ₽","Отклонено, ₽"],
-        matched.map(function(e){var r=e.record;return [dateLabel(e.ts),active,r.receipt_id,r.merchant,
-          statusTitle[r.status]||r.status,r.approved,r.review,r.personal_pay];}));
+        ["Дата","Смета","Номер чека","Продавец","Первичное решение","Итоговое решение","Одобрено, ₽","Ожидает решения, ₽","Отклонено, ₽"],
+        matched.map(function(e){var r=e.record;var final=window.SRHistory.outcome(e,reviews);return [
+          dateLabel(e.ts),active,r.receipt_id,r.merchant,
+          statusTitle[r.status]||r.status,statusTitle[final.status]||final.status,
+          final.approved,final.review,final.rejected];}));
     };
     await load();
   }
