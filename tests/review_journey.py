@@ -53,6 +53,7 @@ def main():
         page.locator("#review-queue .review-item").first.wait_for(timeout=20000)
         assert page.locator("#review-queue .review-item").count() == 2
         assert "2 ожидают решения" in page.locator("#review-count").inner_text()
+        assert "300" in page.locator("#review-budget-remaining").inner_text()
         assert page.locator(".review-category").count() == 2
         assert "локальная симуляция" in page.locator(".history-notice").inner_text().lower()
         page.screenshot(path=str(ARTIFACTS / "review-01-pending-mobile.png"), full_page=True)
@@ -68,6 +69,7 @@ def main():
         info = ctx.request.get(BASE + root).json()
         assert info["spent"]["services"] == 175, info
         assert info["remaining"]["services"] == 125, info
+        assert "125" in page.locator("#review-budget-remaining").inner_text()
         assert ctx.request.get(BASE + root + "/audit").json()["entries"] == 3
         assert "обработано" in page.locator("#review-count").inner_text()
         print("REVIEW 2/4: manual approval charges one simulated item only once", flush=True)
@@ -86,6 +88,19 @@ def main():
         assert accepted.value.status == 200, accepted.value.text()
         page.wait_for_function("() => document.querySelector('#review-count')?.textContent.includes('0 ожидают')")
         assert page.locator("#review-queue .review-complete").count() == 2
+        # The ledger's *visible* current outcomes must be accurate while the
+        # underlying original receipt records remain in NEEDS_REVIEW.
+        assert "175" in page.locator("#history-stat-approved").inner_text()
+        assert "0" in page.locator("#history-stat-review").inner_text()
+        assert "200" in page.locator("#history-stat-rejected").inner_text()
+        assert page.locator(".history-current-status .status.ok").count() == 1
+        assert page.locator(".history-current-status .status.bad").count() == 1
+        assert page.locator(".history-model-status").count() >= 2
+        page.locator("#history-status").select_option("REJECTED")
+        assert page.locator(".history-view").count() == 1
+        assert "200" in page.locator(".history-amount").inner_text()
+        page.locator("#history-status").select_option("")
+        assert page.locator(".history-view").count() == 2
         page.screenshot(path=str(ARTIFACTS / "review-02-resolved-mobile.png"), full_page=True)
         print("REVIEW 3/4: overspend blocked; rejection recorded with no additional charge", flush=True)
 

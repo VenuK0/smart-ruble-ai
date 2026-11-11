@@ -15,7 +15,7 @@ from .data import make_items, make_transactions
 from .antifraud import detect, merchant_features, FEATURES
 from .economics import scenario
 
-app = FastAPI(title="SmartRubleAI Research Prototype", version="0.4.0",
+app = FastAPI(title="SmartRubleAI Research Prototype", version="0.5.0",
               description="Симуляция на синтетических данных. Не подключено к инфраструктуре цифрового рубля.")
 _rows = make_items(300, 0)
 CLF = ItemClassifier().fit([r[0] for r in _rows], [r[1] for r in _rows])

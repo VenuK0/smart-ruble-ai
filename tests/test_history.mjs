@@ -53,3 +53,51 @@ test("short labels handle empty journal and do not produce executable markup",()
  assert.equal(Object.keys(labels).length,0);
  assert.equal(history.filter([],"ЧЕК-0001","",labels).length,0);
 });
+
+test("manual review statuses update summaries and filters without touching original receipts",()=>{
+  const originals=[
+    {record:{receipt_id:"r175",merchant:"Учебный магазин",status:"NEEDS_REVIEW",
+      approved:0,review:175,personal_pay:0,items:[{name:"Arduino",decision:"REVIEW",amount:175}]}},
+    {record:{receipt_id:"r200",merchant:"Учебный магазин",status:"NEEDS_REVIEW",
+      approved:0,review:200,personal_pay:0,items:[{name:"Arduino",decision:"REVIEW",amount:200}]}}
+  ];
+  const before=JSON.stringify(originals);
+  const reviews=[
+    {receipt_id:"r175",item_index:0,status:"APPROVED",
+      resolution:{decision:"APPROVE",category:"services",note:"Разрешено"}},
+    {receipt_id:"r200",item_index:0,status:"REJECTED",
+      resolution:{decision:"REJECT",category:null,note:"Не соответствует лимиту"}}
+  ];
+  assert.equal(history.outcome(originals[0],reviews).status,"APPROVED");
+  assert.equal(history.outcome(originals[1],reviews).status,"REJECTED");
+  const summary=history.summarize(originals,reviews);
+  assert.equal(summary.approved,175);
+  assert.equal(summary.review,0);
+  assert.equal(summary.rejected,200);
+  assert.equal(history.filter(originals,"","APPROVED",undefined,reviews).length,1);
+  assert.equal(history.filter(originals,"","REJECTED",undefined,reviews).length,1);
+  assert.equal(history.filter(originals,"","NEEDS_REVIEW",undefined,reviews).length,0);
+  assert.equal(JSON.stringify(originals),before);
+  assert.equal(originals[0].record.status,"NEEDS_REVIEW");
+  assert.equal(originals[1].record.review,200);
+});
+test("unresolved, mixed and legacy receipts keep truthful current totals",()=>{
+  const original={record:{receipt_id:"mixed",status:"NEEDS_REVIEW",approved:25,review:200,
+    personal_pay:0,items:[
+      {decision:"APPROVE",amount:25},{decision:"REVIEW",amount:100},
+      {decision:"REVIEW",amount:100}]}};
+  const one=[{receipt_id:"mixed",item_index:1,resolution:{decision:"REJECT"}}];
+  const pending=history.outcome(original,one);
+  assert.equal(pending.status,"NEEDS_REVIEW");
+  assert.equal(pending.approved,25);
+  assert.equal(pending.rejected,100);
+  assert.equal(pending.review,100);
+  const both=one.concat([{receipt_id:"mixed",item_index:2,resolution:{decision:"APPROVE"}}]);
+  const finished=history.outcome(original,both);
+  assert.equal(finished.status,"PARTIAL");
+  assert.equal(finished.approved,125);
+  assert.equal(finished.rejected,100);
+  assert.equal(finished.review,0);
+  assert.equal(history.outcome({record:{status:"NEEDS_REVIEW",approved:0,review:200,personal_pay:0}},both).review,200);
+  assert.equal(original.record.items[1].decision,"REVIEW");
+});
