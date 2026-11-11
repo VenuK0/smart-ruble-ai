@@ -214,3 +214,10 @@
   .review-actions button{flex:1 1 155px}
   .review-item-head{gap:8px}
 }
+
+/* v0.5 audit interpretation: current state derived from immutable receipt
+   and separate review decisions; preserve visible initial-model status. */
+.history-current-status{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:100px}
+.history-model-status,.history-original-status{display:block;color:#83756B;font-size:10px;line-height:1.4;font-weight:500}
+.history-detail-header .history-original-status{margin-top:7px}
+.history-item-values .history-model-status{text-align:right;font-size:10px}
