@@ -32,7 +32,17 @@
   async function api(url,method,payload){
     var opts={method:method||"GET",headers:{"Content-Type":"application/json"}};
     if(payload!==undefined)opts.body=JSON.stringify(payload);
-    var response=await fetch(url,opts);
+    var response;
+    try{
+      response=await fetch(url,opts);
+    }catch(err){
+      // A failed network request is not confirmation that the action was
+      // rejected. Reconnect and inspect the audit before trying again.
+      if(err instanceof TypeError){
+        throw Error("Нет связи с локальным сервером ("+location.host+"). Проверьте окно запуска SmartRubleAI и адрес вкладки. После восстановления обновите очередь: решение могло сохраниться.");
+      }
+      throw err;
+    }
     var data;try{data=await response.json();}catch(_){throw Error("Не удалось прочитать ответ сервера");}
     if(!response.ok){
       var message=data.detail||("Ошибка запроса: "+response.status);
