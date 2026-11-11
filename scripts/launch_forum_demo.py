@@ -27,8 +27,13 @@ HOST = "127.0.0.1"
 
 
 def find_local_port():
+    # Use a predictable address for presentations. If another local service
+    # already owns 8000, use a free ephemeral port and display it explicitly.
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.bind((HOST, 0))
+        try:
+            sock.bind((HOST, 8000))
+        except OSError:
+            sock.bind((HOST, 0))
         return sock.getsockname()[1]
 
 
@@ -68,6 +73,8 @@ def main():
         address = base + "/app/history"
         print("\nSmartRubleAI v0.5 — демонстрационный режим (без реальных платежей)")
         print("Ссылка:", address)
+        print("Используйте вкладку именно с ЭТИМ адресом. После перезапуска")
+        print("закройте старую вкладку: прежний порт может больше не работать.")
         print("Активная смета:", demo["grant_id"])
         print("В очереди:", demo["pending"], "спорных позиции: 175 ₽ и 200 ₽")
         print("Проверка: одобрить 175 ₽, попытаться одобрить 200 ₽, отклонить 200 ₽.")
