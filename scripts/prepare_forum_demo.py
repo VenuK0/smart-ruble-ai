@@ -1,4 +1,4 @@
-"""Prepare disposable synthetic receipts on an ALREADY RUNNING local server.
+r"""Prepare disposable synthetic receipts on an ALREADY RUNNING local server.
 
 Windows:
   .venv\Scripts\python.exe scripts\prepare_forum_demo.py
