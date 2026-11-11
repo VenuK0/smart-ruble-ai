@@ -375,6 +375,11 @@ class WorkspaceTests(unittest.TestCase):
             'history-audit',
             'window.SRHistory.filter',
             'window.SRHistory.summarize',
+            'window.SRHistory.outcome',
+            'Одобрено с учётом ручных решений',
+            'Итоговое состояние',
+            'Первичное решение',
+            'Итоговое решение',
             'aria-pressed',
             'Экспорт CSV',
             'Цепочка записей проверена',
@@ -383,16 +388,28 @@ class WorkspaceTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, js)
 
-    def test_review_state_explains_no_manual_queue_and_categories_are_precise(self):
+    def test_demo_review_queue_is_visible_but_not_a_real_approval_service(self):
         js = self.client.get("/app/static/app.js").text
-        self.assertIn('Очередь согласования и интерфейс ручного одобрения', js)
-        self.assertIn('ручное согласование в этой версии не реализовано', js)
-        self.assertIn('x.category==="other"?"Не определена"', js)
+        for token in (
+            'Очередь ручной проверки',
+            'id="review-queue"',
+            'review-action',
+            'Ручное демо-решение:',
+            'без реальных платежей и авторизации',
+            'api("/contracts/"+encodeURIComponent(active)+"/reviews")',
+            'x.category==="other"?"Не определена"',
+        ):
+            with self.subTest(token=token):
+                self.assertIn(token, js)
+        self.assertNotIn('ручное согласование в этой версии не реализовано', js)
+        self.assertIn('Нет связи с локальным сервером', js)
+        self.assertIn('решение могло сохраниться', js)
         css = self.client.get("/app/static/receipts.css").text
         self.assertIn('font-size:12.5px;line-height:1.55', css)
         for url in ["/app/static/history.css", "/app/static/history-utils.js"]:
             response = self.client.get(url)
             self.assertEqual(response.status_code, 200, url)
+        self.assertIn('.review-editor', self.client.get("/app/static/history.css").text)
         self.assertIn('@media(max-width:680px)', self.client.get("/app/static/history.css").text)
 
     def test_anomaly_dashboard_assets_and_explanations(self):

@@ -2,6 +2,7 @@
 Ядро (parser/classifier/contract/antifraud) покрыто тестами; API проверен вручную через Swagger UI (/docs).
 Запуск: uvicorn smartruble.api:app --app-dir src"""
 import uuid
+from typing import Literal
 from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
@@ -14,7 +15,7 @@ from .data import make_items, make_transactions
 from .antifraud import detect, merchant_features, FEATURES
 from .economics import scenario
 
-app = FastAPI(title="SmartRubleAI Research Prototype", version="0.4.0",
+app = FastAPI(title="SmartRubleAI Research Prototype", version="0.5.0",
               description="Симуляция на синтетических данных. Не подключено к инфраструктуре цифрового рубля.")
 _rows = make_items(300, 0)
 CLF = ItemClassifier().fit([r[0] for r in _rows], [r[1] for r in _rows])
@@ -40,6 +41,13 @@ class ReceiptIn(StrictModel):
     id: str = Field(default_factory=lambda: f"rcpt-{uuid.uuid4().hex[:12]}", min_length=1, max_length=128)
     merchant: str = Field(min_length=1, max_length=200)
     items: list[Item] = Field(min_length=1, max_length=100)
+
+
+class ReviewResolutionIn(StrictModel):
+    # Demonstration only: no identity verification, signatures or real payments.
+    decision: Literal["APPROVE", "REJECT"]
+    category: str | None = Field(default=None, max_length=80)
+    note: str = Field(min_length=4, max_length=500)
 
 
 @app.get("/")
@@ -72,6 +80,32 @@ def validate(grant_id: str, receipt: ReceiptIn):
         return c.validate(receipt.model_dump())
     except ValueError as exc:
         raise HTTPException(409 if "уже использован" in str(exc) else 422, str(exc)) from exc
+
+
+@app.get("/contracts/{grant_id}/reviews")
+def review_queue(grant_id: str):
+    contract = CONTRACTS.get(grant_id)
+    if contract is None:
+        raise HTTPException(404, "Контракт не найден")
+    items = contract.list_reviews()
+    return {"mode": "simulation", "items": items,
+            "pending": sum(x["status"] == "PENDING" for x in items),
+            "resolved": sum(x["status"] != "PENDING" for x in items)}
+
+
+@app.post("/contracts/{grant_id}/reviews/{receipt_id}/{item_index}/resolve")
+def resolve_review(grant_id: str, receipt_id: str, item_index: int, body: ReviewResolutionIn):
+    contract = CONTRACTS.get(grant_id)
+    if contract is None:
+        raise HTTPException(404, "Контракт не найден")
+    try:
+        return contract.resolve_review(receipt_id, item_index, body.decision, body.category, body.note)
+    except ValueError as exc:
+        message = str(exc)
+        status = (404 if message in ("Чек не найден", "Позиция чека не найдена")
+                  else 409 if ("уже зафиксировано" in message or "Недостаточно средств" in message)
+                  else 422)
+        raise HTTPException(status, message) from exc
 
 
 @app.get("/contracts/{grant_id}/audit")
@@ -120,9 +154,14 @@ def history(grant_id: str):
     contract = CONTRACTS.get(grant_id)
     if contract is None:
         raise HTTPException(404, "Контракт не найден")
+    # Original receipt entries remain immutable; review decisions are separate
+    # hash-chained events and must never be presented as receipt rows.
+    receipts = [entry for entry in contract.log
+                if entry["record"].get("event_type") != "review_resolution"]
     return {"chain_valid": contract.verify_log(),
             "entries": [{"ts": entry["ts"], "record": entry["record"]}
-                        for entry in contract.log[-100:]]}
+                        for entry in receipts[-100:]],
+            "review_events": len(contract.log) - len(receipts)}
 
 
 @app.get("/antifraud/demo")

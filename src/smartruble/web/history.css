@@ -179,3 +179,47 @@
 .history-original-id>span{font-size:10.5px;color:#887B70}
 .history-original-id code{overflow-wrap:anywhere;color:#6F6259;font-size:11px;line-height:1.5}
 #history-detail{scroll-margin-top:110px}
+
+/* v0.5: local-only demo manual review queue. All actions remain simulated. */
+.review-queue-info{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;padding:17px 20px;background:#FBF9F6;border-bottom:1px solid #EEE6DE}
+.review-queue-info>div{max-width:780px;min-width:0}
+.review-queue-info strong{font-size:13px;color:#322A25}
+.review-queue-info p{margin-top:6px;font-size:11.5px;line-height:1.6}
+.review-queue-info button{flex:0 0 auto}
+.review-queue{padding:8px 20px 18px;display:grid;gap:0}
+.review-queue>.empty{margin:9px 0}
+.review-item{padding:16px 0;border-bottom:1px solid #EBE4DD;min-width:0}
+.review-item:last-child{border-bottom:0}
+.review-item-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px}
+.review-item-head>div:first-child{min-width:0}
+.review-item-head strong{display:block;font-size:13px;line-height:1.45;color:#322923;overflow-wrap:anywhere}
+.review-item-head small{display:block;margin-top:4px;font-size:11px;color:#8C7D71;line-height:1.5;overflow-wrap:anywhere}
+.review-item-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.review-item-right strong{font-size:13px;white-space:nowrap}
+.review-item-reason{font-size:11.5px;margin-top:10px;color:#726358;line-height:1.5}
+.review-editor{margin-top:14px;display:grid;grid-template-columns:minmax(180px,1fr) minmax(220px,1.6fr);gap:12px;align-items:start}
+.review-editor label{font-size:11px;font-weight:650;color:#65594F;display:grid;gap:6px;min-width:0}
+.review-editor .input{width:100%;min-width:0;font-size:12px}
+.review-editor select{height:39px}
+.review-editor textarea{resize:vertical;min-height:70px;padding:10px;line-height:1.45}
+.review-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
+.review-inline-error{grid-column:1/-1;margin-top:-2px}
+.review-complete{border-left:3px solid #A9B7A3;background:#F7F9F5;padding:10px 13px;font-size:11.5px;color:#50634E;line-height:1.6;margin-top:11px;overflow-wrap:anywhere}
+.review-history-update{margin-top:9px;padding:9px 11px;border:1px solid #D4E4D8;background:#F5FAF6;color:#2F6743;font-size:11.5px;line-height:1.5;border-radius:5px}
+.review-history-update.pending{border-color:#F0E0C2;background:#FCF7EC;color:#815C2E}
+@media(max-width:680px){
+  .review-queue-info{padding:14px;flex-direction:column;gap:10px}
+  .review-queue{padding:5px 14px 14px}
+  .review-editor{grid-template-columns:minmax(0,1fr)}
+  .review-actions button{flex:1 1 155px}
+  .review-item-head{gap:8px}
+}
+
+/* v0.5 audit interpretation: current state derived from immutable receipt
+   and separate review decisions; preserve visible initial-model status. */
+.history-current-status{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:100px}
+.history-model-status,.history-original-status{display:block;color:#83756B;font-size:10px;line-height:1.4;font-weight:500}
+.history-detail-header .history-original-status{margin-top:7px}
+.history-item-values .history-model-status{text-align:right;font-size:10px}
+
+.review-queue-info p.review-budget-remaining{font-size:12px;font-weight:700;color:#2A634C;margin:7px 0 5px}

@@ -15,8 +15,8 @@
   var txt=function(v){return String(v==null?"":v);};
   var esc=function(v){return txt(v).replace(/[&<>"']/g,function(ch){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch];});};
   var sum=function(values){return Object.values(values||{}).reduce(function(a,v){return a+Number(v||0);},0);};
-  var statusTitle={APPROVED:"Одобрено",PARTIAL:"Частично",NEEDS_REVIEW:"На проверке",APPROVE:"Одобрено",REVIEW:"На проверке",REJECT:"Отклонено"};
-  var statusClass={APPROVED:"ok",PARTIAL:"warn",NEEDS_REVIEW:"warn",APPROVE:"ok",REVIEW:"warn",REJECT:"bad"};
+  var statusTitle={APPROVED:"Одобрено",PARTIAL:"Частично",NEEDS_REVIEW:"На проверке",APPROVE:"Одобрено",REVIEW:"На проверке",REJECT:"Отклонено",PENDING:"Ожидает решения",REJECTED:"Отклонено"};
+  var statusClass={APPROVED:"ok",PARTIAL:"warn",NEEDS_REVIEW:"warn",APPROVE:"ok",REVIEW:"warn",REJECT:"bad",PENDING:"warn",REJECTED:"bad"};
   function badge(s){return '<span class="status '+(statusClass[s]||"muted")+'">'+esc(statusTitle[s]||s)+'</span>';}
   function section(title,desc,actions){return '<div class="page-head"><div><div class="eyebrow">Контроль целевых средств</div><h1>'+title+'</h1><p class="page-description">'+desc+'</p></div>'+(actions?'<div class="page-actions">'+actions+'</div>':"")+'</div>';}
   function panel(title,content,right){return '<section class="panel"><div class="panel-head"><h2>'+title+'</h2>'+(right||"")+'</div>'+content+'</section>';}
@@ -32,7 +32,17 @@
   async function api(url,method,payload){
     var opts={method:method||"GET",headers:{"Content-Type":"application/json"}};
     if(payload!==undefined)opts.body=JSON.stringify(payload);
-    var response=await fetch(url,opts);
+    var response;
+    try{
+      response=await fetch(url,opts);
+    }catch(err){
+      // A failed network request is not confirmation that the action was
+      // rejected. Reconnect and inspect the audit before trying again.
+      if(err instanceof TypeError){
+        throw Error("Нет связи с локальным сервером ("+location.host+"). Проверьте окно запуска SmartRubleAI и адрес вкладки. После восстановления обновите очередь: решение могло сохраниться.");
+      }
+      throw err;
+    }
     var data;try{data=await response.json();}catch(_){throw Error("Не удалось прочитать ответ сервера");}
     if(!response.ok){
       var message=data.detail||("Ошибка запроса: "+response.status);
@@ -381,7 +391,7 @@
         '<button class="btn primary receipt-new" id="receipt-new" type="button" hidden>Новый чек</button></div>'+
         formMessage("receipt-msg")+'</form></div>')+
       panel("Результат проверки",'<div id="receipt-result" aria-live="polite">'+resultPlaceholder+'</div>')+
-      '</div><p class="receipt-footnote">Результаты носят демонстрационный характер: нет списания реальных денег или подключения к платёжной инфраструктуре. «На проверке» означает необходимость отдельного решения специалиста; ручное согласование в этой версии не реализовано.</p>';
+      '</div><p class="receipt-footnote">Результаты носят демонстрационный характер: нет списания реальных денег или подключения к платёжной инфраструктуре. «На проверке» означает необходимость решения специалиста. В разделе «История операций» доступна демонстрационная очередь ручных решений (без реальных платежей и авторизации).</p>';
 
     var form=$("receipt-form");
     var locked=false;
@@ -533,30 +543,68 @@
       '<div class="history-context"><div><span>АКТИВНАЯ СМЕТА</span><strong>'+esc(active)+'</strong></div>'+
       '<div><span>ИСТОЧНИК ДАННЫХ</span><strong>Журнал симуляции · до 100 последних операций</strong></div>'+
       '<span id="audit-state" class="history-audit muted" role="status" aria-live="polite">Проверяем целостность…</span></div>'+
-      '<div class="history-notice">Статус «На проверке» означает, что система не приняла автоматическое решение. Очередь согласования и интерфейс ручного одобрения в прототипе пока не реализованы.</div>'+
+      '<div class="history-notice"><strong>Только локальная симуляция.</strong> Решения в этой очереди демонстрационные: нет пользователей, ролей, электронной подписи и реальных списаний. Используйте только вымышленные данные.</div>'+
       '<div class="history-stats">'+
         '<div><span>Операций в выборке</span><strong id="history-stat-count">0</strong></div>'+
-        '<div><span>Условно одобрено</span><strong id="history-stat-approved">0 ₽</strong></div>'+
-        '<div><span>Требует проверки</span><strong id="history-stat-review">0 ₽</strong></div>'+
-        '<div><span>Отклонено</span><strong id="history-stat-rejected">0 ₽</strong></div>'+
+        '<div><span>Одобрено с учётом ручных решений</span><strong id="history-stat-approved">0 ₽</strong></div>'+
+        '<div><span>Ожидает решения сейчас</span><strong id="history-stat-review">0 ₽</strong></div>'+
+        '<div><span>Отклонено с учётом ручных решений</span><strong id="history-stat-rejected">0 ₽</strong></div>'+
       '</div>'+
+      panel("Очередь ручной проверки",'<div class="review-queue-info"><div><strong id="review-count">Загружаем решения…</strong><p class="review-budget-remaining" id="review-budget-remaining" aria-live="polite">Проверяем остаток сметы…</p><p>Ручное согласование позиции изменяет лимит только при одобрении и записывается отдельным событием в проверяемый журнал. Исходный чек остаётся неизменным.</p></div><button id="review-reload" type="button" class="btn secondary btn-sm">Обновить очередь</button></div>'+
+        '<div id="review-queue" class="review-queue" aria-live="polite">'+empty("Загрузка","Получаем спорные позиции.")+'</div>')+
       '<div class="history-layout">'+
         panel("Журнал операций",'<div class="history-toolbar">'+
           '<div class="history-filter-area"><div class="field"><label for="history-search">Поиск</label><input id="history-search" class="input" placeholder="Чек, продавец или товар" autocomplete="off"></div>'+
-          '<div class="field"><label for="history-status">Результат</label><select id="history-status"><option value="">Все решения</option><option value="APPROVED">Одобрено</option><option value="NEEDS_REVIEW">На проверке</option><option value="PARTIAL">Частично</option></select></div></div>'+
+          '<div class="field"><label for="history-status">Итоговое состояние</label><select id="history-status"><option value="">Все решения</option><option value="APPROVED">Одобрено</option><option value="NEEDS_REVIEW">На проверке</option><option value="PARTIAL">Частично</option><option value="REJECTED">Отклонено</option></select></div></div>'+
           '<div class="history-toolbar-actions"><button id="history-export" class="btn secondary btn-sm" type="button" disabled>Экспорт CSV</button>'+
           '<button id="history-reload" class="btn secondary btn-sm" type="button">Обновить</button></div></div>'+
           '<div id="history-table">'+empty("Загрузка","Получаем записи журнала.")+'</div>'+
           '<div id="history-count" class="history-filter-count">Проверяем данные…</div>')+
         panel("Детали операции",'<div id="history-detail" class="history-detail">'+
           '<div class="history-detail-empty">Выберите запись в журнале для просмотра позиций и причин решений.</div></div>')+
-      '</div><p class="history-footnote">История ограничена последними 100 операциями выбранной сметы. Данные находятся в памяти сервера и сбрасываются после перезапуска; это не постоянный платёжный реестр.</p>');
+      '</div><p class="history-footnote">В журнале показаны итоговые суммы и статусы с учётом отдельных решений человека. Первоначальные записи чеков неизменны. История ограничена последними 100 чеками выбранной сметы; данные исчезают после перезапуска сервера.</p>');
     if(!estimate)return;
 
     var entries=[];
     var matched=[];
     var shortNumbers=Object.create(null);
     var selectedId="";
+    var reviews=[];
+    var reviewBusy=false;
+
+    function showReviews(){
+      var pending=reviews.filter(function(x){return x.status==="PENDING";});
+      var resolved=reviews.filter(function(x){return x.status!=="PENDING";}).slice(-5).reverse();
+      $("review-count").textContent=number(pending.length)+" ожидают решения · "+number(reviews.length-pending.length)+" обработано";
+      var liveEstimate=current()||estimate;
+      $("review-budget-remaining").textContent="Остаток по активной смете: "+cash(
+        sum(liveEstimate.limits)-sum(liveEstimate.spent));
+      if(!reviews.length){
+        $("review-queue").innerHTML=empty("Нет спорных позиций","Если классификатор не уверен, позиция появится в этой очереди.");
+        return;
+      }
+      var options=Object.keys(estimate.limits||{}).map(function(key){
+        return '<option value="'+esc(key)+'">'+esc(labels[key]||key)+' · доступно '+cash(Number(estimate.limits[key])-Number((current()||estimate).spent[key]||0))+'</option>';
+      }).join("");
+      var rows=pending.concat(resolved).map(function(item){
+        var index=reviews.indexOf(item);
+        var done=item.status!=="PENDING";
+        var result=item.resolution;
+        return '<div class="review-item" data-index="'+index+'"><div class="review-item-head"><div>'+
+          '<strong>'+esc(item.name)+'</strong><small>'+esc(shortNumbers[item.receipt_id]||item.receipt_id)+' · '+esc(item.merchant)+' · позиция '+number(item.item_index+1)+'</small></div>'+
+          '<div class="review-item-right"><strong>'+cash(item.amount)+'</strong>'+badge(item.status)+'</div></div>'+
+          '<p class="review-item-reason">Причина направления: '+esc(item.reason||"не указана")+'</p>'+
+          (done?'<div class="review-complete">Решение: '+esc(result.decision==="APPROVE"?"одобрено по статье «"+(labels[result.category]||result.category)+"»":"отклонено")+
+              '. Комментарий: '+esc(result.note)+'</div>':
+           '<div class="review-editor"><label>Статья сметы для одобрения<select class="input review-category"><option value="">Выберите статью</option>'+options+'</select></label>'+
+           '<label>Обоснование решения<textarea class="input review-note" rows="2" maxlength="500" placeholder="Почему одобряем или отклоняем позицию?"></textarea></label>'+
+           '<div class="review-actions"><button type="button" class="btn primary btn-sm review-action" data-index="'+index+'" data-decision="APPROVE">Одобрить по статье</button>'+
+             '<button type="button" class="btn secondary btn-sm review-action" data-index="'+index+'" data-decision="REJECT">Отклонить</button></div>'+
+           '<div class="form-message review-inline-error" role="status" aria-live="polite"></div></div>')+
+          '</div>';
+      });
+      $("review-queue").innerHTML=rows.join("");
+    }
 
     function detail(entry){
       if(!entry){
@@ -564,33 +612,42 @@
         return;
       }
       var r=entry.record||{};
-      var items=(r.items||[]).map(function(item){
+      var final=window.SRHistory.outcome(entry,reviews);
+      var items=(r.items||[]).map(function(item,index){
         var category=item.category==="other"?"Не определена":(labels[item.category]||item.category||"Не определена");
+        var review=reviews.find(function(x){return x.receipt_id===r.receipt_id&&x.item_index===index;});
+        var resolution=review&&review.resolution;
+        var reviewNote=item.decision==="REVIEW"?(resolution?
+          '<div class="review-history-update">Ручное демо-решение: '+esc(resolution.decision==="APPROVE"?"одобрено":"отклонено")+
+            (resolution.category?" · "+esc(labels[resolution.category]||resolution.category):"")+'<br>Причина: '+esc(resolution.note)+'</div>':
+          '<div class="review-history-update pending">Ожидает ручного решения в очереди выше.</div>'):"";
         return '<div class="history-item"><div class="history-item-description"><strong>'+esc(item.name)+'</strong>'+
           '<small>Категория модели: '+esc(category)+'</small>'+
-          '<p>'+esc(item.reason||"Причина не указана")+'</p></div>'+
-          '<div class="history-item-values">'+badge(item.decision)+'<strong>'+cash(item.amount)+'</strong></div></div>';
+          '<p>'+esc(item.reason||"Причина не указана")+'</p>'+reviewNote+'</div>'+
+          '<div class="history-item-values">'+badge(resolution?resolution.decision:item.decision)+
+            (resolution?'<small class="history-model-status">Модель: на проверке</small>':'')+
+            '<strong>'+cash(item.amount)+'</strong></div></div>';
       }).join("");
       $("history-detail").innerHTML=
         '<div class="history-detail-header"><span class="history-detail-label">Номер в текущем журнале</span>'+
         '<strong>'+esc(shortNumbers[r.receipt_id]||"Чек")+'</strong>'+
         '<div class="history-original-id"><span>Исходный ID:</span><code>'+esc(r.receipt_id)+'</code></div>'+
-        '<div>'+badge(r.status)+'</div></div>'+
+        '<div>'+badge(final.status)+'<small class="history-original-status">Первичное решение: '+esc(statusTitle[r.status]||r.status)+'</small></div></div>'+
         '<dl class="history-facts"><dt>Дата</dt><dd>'+dateLabel(entry.ts)+'</dd>'+
         '<dt>Продавец</dt><dd>'+esc(r.merchant)+'</dd>'+
-        '<dt>Одобрено</dt><dd>'+cash(r.approved)+'</dd>'+
-        '<dt>Требует проверки</dt><dd>'+cash(r.review)+'</dd>'+
-        '<dt>Отклонено</dt><dd>'+cash(r.personal_pay)+'</dd></dl>'+
+        '<dt>Итого одобрено</dt><dd>'+cash(final.approved)+'</dd>'+
+        '<dt>Ожидает решения</dt><dd>'+cash(final.review)+'</dd>'+
+        '<dt>Итого отклонено</dt><dd>'+cash(final.rejected)+'</dd></dl>'+
         '<div class="history-items-heading">Позиции чека <span>'+number((r.items||[]).length)+'</span></div>'+
         (items||'<div class="history-items-empty">Сведения о позициях отсутствуют.</div>')+
-        '<p class="history-detail-foot">Решения рассчитаны серверной моделью. Ручное подтверждение спорных позиций здесь не выполняется.</p>';
+        '<p class="history-detail-foot">Отображены первоначальные решения модели. Если позиция рассмотрена человеком в демо-очереди, итог указан отдельно; исходная запись не переписывается.</p>';
     }
 
     function display(){
       var q=$("history-search").value;
       var status=$("history-status").value;
-      matched=window.SRHistory.filter(entries,q,status,shortNumbers);
-      var totals=window.SRHistory.summarize(matched);
+      matched=window.SRHistory.filter(entries,q,status,shortNumbers,reviews);
+      var totals=window.SRHistory.summarize(matched,reviews);
       $("history-stat-count").textContent=number(totals.count);
       $("history-stat-approved").textContent=cash(totals.approved);
       $("history-stat-review").textContent=cash(totals.review);
@@ -601,18 +658,20 @@
       }
       var rows=matched.map(function(entry,i){
         var r=entry.record;
+        var final=window.SRHistory.outcome(entry,reviews);
         return tr([
           dateLabel(entry.ts),
           '<span class="history-view-wrap"><button type="button" class="history-view" data-index="'+i+'" aria-pressed="'+(r.receipt_id===selectedId?'true':'false')+'" aria-label="Открыть '+esc(shortNumbers[r.receipt_id]||r.receipt_id)+'">'+esc(shortNumbers[r.receipt_id]||r.receipt_id)+'</button>'+
           (r.receipt_id===selectedId?'<small class="history-selected-note">Выбран</small>':'')+'</span>',
           '<span class="history-merchant">'+esc(r.merchant)+'</span>',
-          badge(r.status),
-          '<strong class="history-amount">'+cash(Number(r.approved||0)+Number(r.review||0)+Number(r.personal_pay||0))+'</strong>'
+          '<span class="history-current-status">'+badge(final.status)+
+            (r.status!==final.status?'<small class="history-model-status">Первично: '+esc(statusTitle[r.status]||r.status)+'</small>':'')+'</span>',
+          '<strong class="history-amount">'+cash(final.approved+final.review+final.rejected)+'</strong>'
         ],r.receipt_id===selectedId?"history-selected-row":"");
       });
-      $("history-table").innerHTML=table(["Дата","Чек","Продавец","Решение",{title:"Сумма",num:true}],rows,
+      $("history-table").innerHTML=table(["Дата","Чек","Продавец","Итоговое решение",{title:"Сумма",num:true}],rows,
         entries.length?"Ничего не найдено. Попробуйте изменить фильтр.":"Здесь пока нет операций. Проверьте первый чек.");
-      $("history-count").textContent="Показано "+number(matched.length)+" из "+number(entries.length)+" последних записей. Короткие номера действуют в текущем журнале; CSV содержит исходные ID.";
+      $("history-count").textContent="Показано "+number(matched.length)+" из "+number(entries.length)+" последних чеков. Статусы учитывают ручные решения; CSV сохраняет исходные ID и оба статуса.";
       detail(matched.find(function(e){return e.record.receipt_id===selectedId;})||null);
     }
 
@@ -621,15 +680,23 @@
       $("audit-state").textContent="Проверяем целостность…";
       $("audit-state").className="history-audit muted";
       try{
-        var result=await api("/contracts/"+encodeURIComponent(active)+"/history");
+        var results=await Promise.all([
+          api("/contracts/"+encodeURIComponent(active)+"/history"),
+          api("/contracts/"+encodeURIComponent(active)+"/reviews")
+        ]);
+        var result=results[0];
+        reviews=results[1].items||[];
         entries=(result.entries||[]).slice().reverse();
         shortNumbers=window.SRHistory.shortLabels(entries);
         $("audit-state").textContent=result.chain_valid?
           "Цепочка записей проверена":"Нарушена целостность журнала";
         $("audit-state").className="history-audit "+(result.chain_valid?"ok":"bad");
+        showReviews();
         display();
       }catch(err){
         entries=[];
+        reviews=[];
+        showReviews();
         selectedId="";
         $("audit-state").textContent="Не удалось проверить журнал";
         $("audit-state").className="history-audit bad";
@@ -639,6 +706,34 @@
         $("history-reload").disabled=false;
       }
     }
+    $("review-reload").onclick=load;
+    $("review-queue").onclick=async function(event){
+      var button=event.target.closest(".review-action");
+      if(!button||reviewBusy)return;
+      var index=Number(button.dataset.index);
+      var item=reviews[index];
+      if(!item||item.status!=="PENDING")return;
+      var container=button.closest(".review-item");
+      var note=container.querySelector(".review-note").value.trim();
+      var category=button.dataset.decision==="APPROVE"?container.querySelector(".review-category").value:null;
+      var error=container.querySelector(".review-inline-error");
+      if(note.length<4||note.length>500){error.textContent="Укажите обоснование от 4 до 500 символов.";error.className="form-message error review-inline-error";return;}
+      if(button.dataset.decision==="APPROVE"&&!category){error.textContent="Для одобрения выберите статью сметы.";error.className="form-message error review-inline-error";return;}
+      reviewBusy=true;
+      container.querySelectorAll(".review-action").forEach(function(b){b.disabled=true;});
+      try{
+        await api("/contracts/"+encodeURIComponent(active)+"/reviews/"+encodeURIComponent(item.receipt_id)+"/"+item.item_index+"/resolve","POST",{
+          decision:button.dataset.decision,category:category,note:note
+        });
+        toast("Демо-решение записано в журнал.");
+        await reloadContracts(false);
+        await load();
+      }catch(err){
+        error.textContent=err.message;
+        error.className="form-message error review-inline-error";
+        container.querySelectorAll(".review-action").forEach(function(b){b.disabled=false;});
+      }finally{reviewBusy=false;}
+    };
     $("history-search").oninput=display;
     $("history-status").onchange=display;
     $("history-reload").onclick=load;
@@ -658,9 +753,11 @@
     $("history-export").onclick=function(){
       if(!matched.length){toast("Нет операций для выгрузки",true);return;}
       window.SRCSV.download("smartruble-operations.csv",
-        ["Дата","Смета","Номер чека","Продавец","Результат","Одобрено, ₽","На проверке, ₽","Отклонено, ₽"],
-        matched.map(function(e){var r=e.record;return [dateLabel(e.ts),active,r.receipt_id,r.merchant,
-          statusTitle[r.status]||r.status,r.approved,r.review,r.personal_pay];}));
+        ["Дата","Смета","Номер чека","Продавец","Первичное решение","Итоговое решение","Одобрено, ₽","Ожидает решения, ₽","Отклонено, ₽"],
+        matched.map(function(e){var r=e.record;var final=window.SRHistory.outcome(e,reviews);return [
+          dateLabel(e.ts),active,r.receipt_id,r.merchant,
+          statusTitle[r.status]||r.status,statusTitle[final.status]||final.status,
+          final.approved,final.review,final.rejected];}));
     };
     await load();
   }

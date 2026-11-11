@@ -21,6 +21,7 @@ class SmartContract:
     spent: dict = field(default_factory=dict)
     log: list = field(default_factory=list)
     processed_receipts: dict = field(default_factory=dict)
+    review_resolutions: dict = field(default_factory=dict)  # (receipt_id, item_index) -> simulated resolution
     _lock: object = field(default_factory=RLock, repr=False)
 
     def remaining(self, cat: str) -> float:
@@ -111,6 +112,92 @@ class SmartContract:
             self.spent = prior_spent
             del self.log[prior_log_len:]
             raise
+
+    def list_reviews(self) -> list[dict]:
+        """Pending and completed demonstration decisions; original receipts remain immutable."""
+        with self._lock:
+            rows = []
+            for receipt_id, (_, receipt) in self.processed_receipts.items():
+                for index, item in enumerate(receipt["items"]):
+                    if item["decision"] != REVIEW:
+                        continue
+                    resolution = self.review_resolutions.get((receipt_id, index))
+                    rows.append({
+                        "receipt_id": receipt_id,
+                        "merchant": receipt["merchant"],
+                        "item_index": index,
+                        "name": item["name"],
+                        "amount": item["amount"],
+                        "predicted_category": item["category"],
+                        "reason": item["reason"],
+                        "status": resolution["status"] if resolution else "PENDING",
+                        "resolution": copy.deepcopy(resolution) if resolution else None,
+                    })
+            return rows
+
+    def resolve_review(self, receipt_id: str, item_index: int, decision: str,
+                       category: str | None, note: str) -> dict:
+        """Record a human-like *demo* decision as a new hash-chained event.
+
+        Never rewrite the initial receipt. This endpoint has no user identity;
+        it must not be exposed as a real financial approval workflow.
+        """
+        with self._lock:
+            if not isinstance(receipt_id, str) or receipt_id not in self.processed_receipts:
+                raise ValueError("Чек не найден")
+            receipt = self.processed_receipts[receipt_id][1]
+            if not isinstance(item_index, int) or isinstance(item_index, bool) or not 0 <= item_index < len(receipt["items"]):
+                raise ValueError("Позиция чека не найдена")
+            item = receipt["items"][item_index]
+            if item["decision"] != REVIEW:
+                raise ValueError("Позиция не ожидает ручной проверки")
+            if decision not in (APPROVE, REJECT):
+                raise ValueError("Выберите одобрение или отклонение")
+            if not isinstance(note, str) or not 4 <= len(note.strip()) <= 500:
+                raise ValueError("Пояснение должно содержать от 4 до 500 символов")
+            note = note.strip()
+            if decision == APPROVE:
+                if not isinstance(category, str) or category not in self.limits:
+                    raise ValueError("Выберите разрешённую статью сметы")
+            elif category is not None:
+                raise ValueError("Для отклонения статья сметы не указывается")
+
+            key = (receipt_id, item_index)
+            prev = self.review_resolutions.get(key)
+            if prev:
+                if prev["decision"] == decision and prev["category"] == category and prev["note"] == note:
+                    return copy.deepcopy(prev)
+                raise ValueError("Решение по этой позиции уже зафиксировано")
+
+            amount = Decimal(str(item["amount"]))
+            if decision == APPROVE and amount > Decimal(str(self.remaining(category))):
+                raise ValueError("Недостаточно средств по выбранной статье; одобрение невозможно")
+
+            response = {
+                "receipt_id": receipt_id, "item_index": item_index,
+                "decision": decision, "status": "APPROVED" if decision == APPROVE else "REJECTED",
+                "category": category, "amount": float(amount), "note": note,
+            }
+            event = {
+                "event_type": "review_resolution", "receipt_id": receipt_id,
+                "item_index": item_index, "decision": decision, "category": category,
+                "amount": float(amount), "note": note,
+            }
+            previous_spent = copy.deepcopy(self.spent)
+            previous_log_count = len(self.log)
+            try:
+                if decision == APPROVE:
+                    self.spent[category] = float(
+                        Decimal(str(self.spent.get(category, 0))) + amount
+                    )
+                self._append_log(event)
+                self.review_resolutions[key] = copy.deepcopy(response)
+                return copy.deepcopy(response)
+            except Exception:
+                self.spent = previous_spent
+                del self.log[previous_log_count:]
+                self.review_resolutions.pop(key, None)
+                raise
 
     def _append_log(self, record: dict):
         prev = self.log[-1]["hash"] if self.log else "0" * 64
