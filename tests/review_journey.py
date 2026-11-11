@@ -86,6 +86,19 @@ def main():
         assert accepted.value.status == 200, accepted.value.text()
         page.wait_for_function("() => document.querySelector('#review-count')?.textContent.includes('0 ожидают')")
         assert page.locator("#review-queue .review-complete").count() == 2
+        # The ledger's *visible* current outcomes must be accurate while the
+        # underlying original receipt records remain in NEEDS_REVIEW.
+        assert "175" in page.locator("#history-stat-approved").inner_text()
+        assert "0" in page.locator("#history-stat-review").inner_text()
+        assert "200" in page.locator("#history-stat-rejected").inner_text()
+        assert page.locator(".history-current-status .status.ok").count() == 1
+        assert page.locator(".history-current-status .status.bad").count() == 1
+        assert page.locator(".history-model-status").count() >= 2
+        page.locator("#history-status").select_option("REJECTED")
+        assert page.locator(".history-view").count() == 1
+        assert "200" in page.locator(".history-amount").inner_text()
+        page.locator("#history-status").select_option("")
+        assert page.locator(".history-view").count() == 2
         page.screenshot(path=str(ARTIFACTS / "review-02-resolved-mobile.png"), full_page=True)
         print("REVIEW 3/4: overspend blocked; rejection recorded with no additional charge", flush=True)
 
