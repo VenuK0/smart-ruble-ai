@@ -4,9 +4,11 @@ on:
     branches:
       - main
       - coursework-analytics
+      - feature/v05-forum-evidence
   pull_request:
     branches:
       - main
+      - feature/v05-demo-review-queue
 jobs:
   python:
     runs-on: ubuntu-latest
@@ -37,6 +39,12 @@ jobs:
         run: python -m unittest discover -s tests -v
       - name: Reproduce synthetic stress evaluation
         run: PYTHONPATH=src python -m smartruble.robustness
+      - name: Reproduce forum classifier, antifraud and review evidence
+        run: python scripts/forum_evidence.py --classifier-seeds 0 1 2 3 4 --fraud-seeds 0 1 2 3 4 5 6 7 8 9 --samples-per-class 160 --output artifacts/forum-evidence
+      - name: Record research environment
+        run: |
+          python --version > artifacts/forum-evidence/python-version.txt
+          python -m pip freeze > artifacts/forum-evidence/environment-freeze.txt
       - name: Install browser smoke dependencies
         run: python -m pip install playwright==1.55.0
       - name: Check six real pages at five viewport widths
@@ -47,6 +55,14 @@ jobs:
           PYTHONPATH=src python tests/browser_smoke.py
           PYTHONPATH=src python tests/forum_journey.py
           PYTHONPATH=src python tests/review_journey.py
+          python scripts/prepare_forum_demo.py --base-url http://127.0.0.1:8765
+      - name: Upload reproducible synthetic forum evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smartruble-forum-evidence
+          path: artifacts/forum-evidence/
+          if-no-files-found: ignore
       - name: Upload screen review snapshots
         if: always()
         uses: actions/upload-artifact@v4
