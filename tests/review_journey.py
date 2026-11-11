@@ -53,6 +53,7 @@ def main():
         page.locator("#review-queue .review-item").first.wait_for(timeout=20000)
         assert page.locator("#review-queue .review-item").count() == 2
         assert "2 ожидают решения" in page.locator("#review-count").inner_text()
+        assert "300" in page.locator("#review-budget-remaining").inner_text()
         assert page.locator(".review-category").count() == 2
         assert "локальная симуляция" in page.locator(".history-notice").inner_text().lower()
         page.screenshot(path=str(ARTIFACTS / "review-01-pending-mobile.png"), full_page=True)
@@ -68,6 +69,7 @@ def main():
         info = ctx.request.get(BASE + root).json()
         assert info["spent"]["services"] == 175, info
         assert info["remaining"]["services"] == 125, info
+        assert "125" in page.locator("#review-budget-remaining").inner_text()
         assert ctx.request.get(BASE + root + "/audit").json()["entries"] == 3
         assert "обработано" in page.locator("#review-count").inner_text()
         print("REVIEW 2/4: manual approval charges one simulated item only once", flush=True)
