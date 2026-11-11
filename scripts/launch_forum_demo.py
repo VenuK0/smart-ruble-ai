@@ -17,7 +17,10 @@ import urllib.request
 import webbrowser
 from pathlib import Path
 
-from prepare_forum_demo import prepare
+if __package__:
+    from .prepare_forum_demo import prepare
+else:
+    from prepare_forum_demo import prepare
 
 PROJECT = Path(__file__).resolve().parents[1]
 HOST = "127.0.0.1"
