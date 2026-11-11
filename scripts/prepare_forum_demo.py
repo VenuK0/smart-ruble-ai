@@ -37,12 +37,12 @@ def prepare(base, grant=None):
             or parsed.query or parsed.fragment:
         raise ValueError("Use only http://127.0.0.1:PORT or http://localhost:PORT")
     base = base.rstrip("/")
-    health = request(base, "/health")
-    if health.get("mode") != "simulation":
-        raise RuntimeError("Not the SmartRubleAI simulation server")
     grant = grant or ("forum-v05-" + uuid.uuid4().hex[:8])
     if not grant.startswith("forum-v05-"):
         raise ValueError("Grant ID must start with forum-v05-")
+    health = request(base, "/health")
+    if health.get("mode") != "simulation":
+        raise RuntimeError("Not the SmartRubleAI simulation server")
     contract = request(base, "/contracts", {
         "grant_id": grant, "text": "Услуги - 300"
     })
