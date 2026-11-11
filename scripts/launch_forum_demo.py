@@ -27,14 +27,18 @@ HOST = "127.0.0.1"
 
 
 def find_local_port():
-    # Use a predictable address for presentations. If another local service
-    # already owns 8000, use a free ephemeral port and display it explicitly.
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        try:
-            sock.bind((HOST, 8000))
-        except OSError:
-            sock.bind((HOST, 0))
-        return sock.getsockname()[1]
+    # Prefer a stable address, but use a separate socket for fallback so a
+    # failed bind on Windows cannot leave the socket in an unusable state.
+    for port in (8000, 0):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            try:
+                sock.bind((HOST, port))
+            except OSError:
+                if port == 8000:
+                    continue
+                raise
+            return sock.getsockname()[1]
+    raise OSError("Не удалось подобрать локальный порт")
 
 
 def wait_for_server(base, process, timeout=30):
