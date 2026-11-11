@@ -46,6 +46,7 @@ jobs:
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
           PYTHONPATH=src python tests/browser_smoke.py
           PYTHONPATH=src python tests/forum_journey.py
+          PYTHONPATH=src python tests/review_journey.py
       - name: Upload screen review snapshots
         if: always()
         uses: actions/upload-artifact@v4
