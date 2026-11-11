@@ -621,7 +621,9 @@
         return '<div class="history-item"><div class="history-item-description"><strong>'+esc(item.name)+'</strong>'+
           '<small>Категория модели: '+esc(category)+'</small>'+
           '<p>'+esc(item.reason||"Причина не указана")+'</p>'+reviewNote+'</div>'+
-          '<div class="history-item-values">'+badge(item.decision)+'<strong>'+cash(item.amount)+'</strong></div></div>';
+          '<div class="history-item-values">'+badge(resolution?resolution.decision:item.decision)+
+            (resolution?'<small class="history-model-status">Модель: на проверке</small>':'')+
+            '<strong>'+cash(item.amount)+'</strong></div></div>';
       }).join("");
       $("history-detail").innerHTML=
         '<div class="history-detail-header"><span class="history-detail-label">Номер в текущем журнале</span>'+
