@@ -397,6 +397,8 @@ class WorkspaceTests(unittest.TestCase):
             with self.subTest(token=token):
                 self.assertIn(token, js)
         self.assertNotIn('ручное согласование в этой версии не реализовано', js)
+        self.assertIn('Нет связи с локальным сервером', js)
+        self.assertIn('решение могло сохраниться', js)
         css = self.client.get("/app/static/receipts.css").text
         self.assertIn('font-size:12.5px;line-height:1.55', css)
         for url in ["/app/static/history.css", "/app/static/history-utils.js"]:
