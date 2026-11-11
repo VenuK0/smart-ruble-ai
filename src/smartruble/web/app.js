@@ -550,7 +550,7 @@
         '<div><span>Ожидает решения сейчас</span><strong id="history-stat-review">0 ₽</strong></div>'+
         '<div><span>Отклонено с учётом ручных решений</span><strong id="history-stat-rejected">0 ₽</strong></div>'+
       '</div>'+
-      panel("Очередь ручной проверки",'<div class="review-queue-info"><div><strong id="review-count">Загружаем решения…</strong><p>Ручное согласование позиции изменяет лимит только при одобрении и записывается отдельным событием в проверяемый журнал. Исходный чек остаётся неизменным.</p></div><button id="review-reload" type="button" class="btn secondary btn-sm">Обновить очередь</button></div>'+
+      panel("Очередь ручной проверки",'<div class="review-queue-info"><div><strong id="review-count">Загружаем решения…</strong><p class="review-budget-remaining" id="review-budget-remaining" aria-live="polite">Проверяем остаток сметы…</p><p>Ручное согласование позиции изменяет лимит только при одобрении и записывается отдельным событием в проверяемый журнал. Исходный чек остаётся неизменным.</p></div><button id="review-reload" type="button" class="btn secondary btn-sm">Обновить очередь</button></div>'+
         '<div id="review-queue" class="review-queue" aria-live="polite">'+empty("Загрузка","Получаем спорные позиции.")+'</div>')+
       '<div class="history-layout">'+
         panel("Журнал операций",'<div class="history-toolbar">'+
@@ -576,6 +576,9 @@
       var pending=reviews.filter(function(x){return x.status==="PENDING";});
       var resolved=reviews.filter(function(x){return x.status!=="PENDING";}).slice(-5).reverse();
       $("review-count").textContent=number(pending.length)+" ожидают решения · "+number(reviews.length-pending.length)+" обработано";
+      var liveEstimate=current()||estimate;
+      $("review-budget-remaining").textContent="Остаток по активной смете: "+cash(
+        sum(liveEstimate.limits)-sum(liveEstimate.spent));
       if(!reviews.length){
         $("review-queue").innerHTML=empty("Нет спорных позиций","Если классификатор не уверен, позиция появится в этой очереди.");
         return;
